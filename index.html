@@ -1,0 +1,2069 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#07111f">
+    <meta name="description" content="Offline-capable transport simulation for rail, road, air, sea, and space routes.">
+    <title>Transport Simulator Web App</title>
+    <link rel="icon"
+        href="./icons/app-icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./icons/app-192.png">
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body class="cockpit">
+    <div class="page-container">
+        <div class="toolbar-bar" id="toolbarBar">
+
+            <!-- Island A: Mission Control -->
+            <div class="toolbar-island island-mission" aria-label="Mission Control">
+                <span class="island-label">Mission</span>
+                <button id="simulateBtn" class="btn-mission" onclick="showSimulateDialog()" title="Start simulation">
+                    <i data-lucide="play"></i>
+                    <span class="btn-label">Simulate</span>
+                </button>
+                <button id="timeChartBtn" class="btn-secondary" onclick="showTimeChart()" title="View route timetable">
+                    <i data-lucide="bar-chart-2"></i>
+                    <span class="btn-label">Time Chart</span>
+                </button>
+            </div>
+
+            <!-- Island B: Route Workshop -->
+            <div class="toolbar-island island-route" id="islandRoute" aria-label="Route Workshop">
+                <span class="island-label">Route</span>
+                <button id="createRouteBtn" class="btn-route" onclick="toggleRouteMode()" title="Create a new route">
+                    <i data-lucide="route"></i>
+                    <span class="btn-label">Create Route</span>
+                </button>
+                <button id="undoBtn" class="btn-secondary" onclick="undoLastPoint()" title="Undo last waypoint" style="display:none;">
+                    <i data-lucide="undo-2"></i>
+                    <span class="btn-label">Undo</span>
+                </button>
+                <button class="btn-confirm" onclick="saveRouteToJson()" title="Save current route">
+                    <i data-lucide="save"></i>
+                    <span class="btn-label">Save</span>
+                </button>
+                <button class="btn-secondary" onclick="showRouteDialog()" title="Load a saved route">
+                    <i data-lucide="folder-open"></i>
+                    <span class="btn-label">Load</span>
+                </button>
+                <button class="btn-secondary" onclick="showEditRouteDialog()" title="Edit current route">
+                    <i data-lucide="pencil-line"></i>
+                    <span class="btn-label">Edit</span>
+                </button>
+                <button class="btn-danger" onclick="resetMap()" title="Reset map and clear all routes">
+                    <i data-lucide="rotate-ccw"></i>
+                    <span class="btn-label">Reset Map</span>
+                </button>
+                <!-- Route stats strip: visible during route-building mode -->
+                <div id="routeStatsStrip" class="route-stats-strip" aria-live="polite">
+                    <i data-lucide="map-pin" style="width:11px;height:11px;"></i>
+                    <span id="routeStatsKm" class="route-stats-val">0.0 km</span>
+                    <span class="route-stats-sep">&middot;</span>
+                    <span id="routeStatsPts" class="route-stats-val">0 pts</span>
+                </div>
+                <!-- Telemetry strip: visible during active simulation -->
+                <div id="toolbarTelemetry" class="toolbar-telemetry" aria-live="polite">
+                    <i data-lucide="activity" style="width:12px;height:12px;"></i>
+                    <span class="telemetry-item" title="Delay against the timetable planned at departure"><span class="telemetry-label">SCHEDULE</span> <span id="telemetrySchedule" class="telemetry-val" data-level="ok">On time</span></span>
+                    <span class="telemetry-sep">&middot;</span>
+                    <span class="telemetry-item"><span class="telemetry-label">PROGRESS</span> <span id="telemetryProgress" class="telemetry-val">0%</span></span>
+                </div>
+            </div>
+
+            <!-- Island C: Environment & System -->
+            <div class="toolbar-island island-env" aria-label="Environment &amp; System">
+                <span class="island-label">Env &amp; System</span>
+                <button id="weatherButton" class="btn-secondary" onclick="showWeatherDialog()" title="Weather controls">
+                    <i data-lucide="cloud"></i>
+                    <span class="btn-label">Weather</span>
+                </button>
+                <button id="volumeButton" class="btn-secondary" onclick="toggleVolumePopup()" title="Audio controls">
+                    <i data-lucide="volume-2"></i>
+                    <span class="btn-label">Volume</span>
+                </button>
+                <button id="toggle3DBtn" class="btn-secondary" onclick="toggle3DMode()" title="Switch between 2D and 3D view">
+                    <i data-lucide="globe"></i>
+                    <span class="btn-label">3D View</span>
+                </button>
+                <button id="settingsBtn" class="btn-secondary" onclick="showSettingsDialog()" title="Display and vehicle settings">
+                    <i data-lucide="sliders-horizontal"></i>
+                    <span class="btn-label">Settings</span>
+                </button>
+                <button id="themeControlToggle" class="btn-secondary" onclick="toggleThemePanel()" title="Map and interface themes" aria-controls="themeControlPanel" aria-expanded="false">
+                    <span id="themeToggleIcon" aria-hidden="true">🎨</span>
+                    <span class="btn-label">Themes</span>
+                </button>
+                <button id="perfToggleBtn" class="btn-secondary" onclick="togglePerfMetrics()" title="Toggle performance metrics">
+                    <i data-lucide="activity"></i>
+                    <span class="btn-label">Metrics</span>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Volume Control Pop-Up -->
+        <div id="volumePopup"
+            style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; color: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); width: 300px; max-height: 70vh; overflow-y: auto;">
+            <h3>Audio Controls</h3>
+
+            <!-- Existing Volume Controls -->
+            <label for="voiceVolume">Voice Volume:</label>
+            <input type="range" id="voiceVolume" min="0" max="1" step="0.1" value="0.6"
+                onchange="updateVoiceVolume(this.value)">
+            <br><br>
+            <label for="effectsVolume">Sound Effects Volume:</label>
+            <input type="range" id="effectsVolume" min="0" max="1" step="0.1" value="0.6"
+                onchange="updateEffectsVolume(this.value)">
+
+            <br>
+            <button onclick="toggleVolumePopup()">Close</button>
+        </div>
+        <div id="routeDialog"
+            style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(20px); color: #f1f5f9; padding: 25px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); width: 450px; border: 1px solid rgba(148, 163, 184, 0.2); z-index: 3000; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin: 0 0 20px 0; color: #f1f5f9;">🚂 Select a Route</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <select id="routeDropdown"
+                        style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.3); background: rgba(15, 23, 42, 0.8); color: #f1f5f9;"></select>
+                </div>
+                <div style="min-width: 140px;">
+                    <select id="mainRouteSortDropdown"
+                        style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.3); background: rgba(15, 23, 42, 0.8); color: #f1f5f9;">
+                        <option value="name">📝 Name (A-Z)</option>
+                        <option value="name-desc">📝 Name (Z-A)</option>
+                        <option value="distance">📏 Distance (Low-High)</option>
+                        <option value="distance-desc">📏 Distance (High-Low)</option>
+                    </select>
+                </div>
+            </div>
+            <br><br>
+            <label for="reverseRoute"
+                style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px; cursor: pointer;">
+                <input type="checkbox" id="reverseRoute" style="accent-color: #10b981;">
+                🔄 Reverse Route Direction
+            </label>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #f1f5f9;">🚀 Route
+                    Type:</label>
+                <select id="routeTypeSelector"
+                    style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.3); background: rgba(15, 23, 42, 0.8); color: #f1f5f9;">
+                    <option value="road">🛣️ Road</option>
+                    <option value="rail" selected>🚂 Rail</option>
+                    <option value="hyperloop">⚡ Hyperloop</option>
+                    <option value="air">✈️ Air</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="loadSelectedRoute()"
+                    style="background: linear-gradient(135deg, #10b981, #059669); border: none; color: white; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-weight: 500;">Load</button>
+                <button onclick="closeRouteDialog()"
+                    style="background: rgba(107, 114, 128, 0.2); border: 1px solid #6b7280; color: #6b7280; border-radius: 8px; padding: 10px 20px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+
+        <!-- Edit Route Dialog -->
+        <div id="editRouteDialog"
+            style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(20px); color: #f1f5f9; padding: 25px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); width: 450px; border: 1px solid rgba(148, 163, 184, 0.2); z-index: 3000; max-height: 80vh; overflow-y: auto;">
+            <div class="dialog-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #f1f5f9;">📝 Edit Route</h3>
+                <button onclick="closeEditRouteDialog()"
+                    style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 16px; font-weight: bold;">×</button>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Route to
+                            Edit:</label>
+                        <select id="editRouteDropdown"
+                            style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: rgba(51, 65, 85, 0.8); color: #f1f5f9;">
+                            <option value="">-- Select a route --</option>
+                        </select>
+                    </div>
+                    <div style="min-width: 140px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Sort By:</label>
+                        <select id="routeSortDropdown"
+                            style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569; background: rgba(51, 65, 85, 0.8); color: #f1f5f9;">
+                            <option value="name">📝 Name (A-Z)</option>
+                            <option value="name-desc">📝 Name (Z-A)</option>
+                            <option value="distance">📏 Distance (Low-High)</option>
+                            <option value="distance-desc">📏 Distance (High-Low)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="editRoutePoints" style="margin-bottom: 20px;">
+                <!-- Route points will be dynamically populated here -->
+            </div>
+
+            <div style="margin-bottom: 16px; padding: 12px; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; background: rgba(15, 23, 42, 0.5);">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                    <button id="modifyOnMapBtn" onclick="toggleModifyOnMap()"
+                        style="background: rgba(14, 165, 233, 0.2); border: 1px solid #0ea5e9; color: #38bdf8; border-radius: 8px; padding: 8px 12px; cursor: pointer;">🗺️ Modify on Map</button>
+                    <button id="modifyMapMoveBtn" onclick="setModifyOnMapMode('move')"
+                        style="display:none; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; border-radius: 8px; padding: 8px 12px; cursor: pointer;">Move</button>
+                    <button id="modifyMapAddBtn" onclick="setModifyOnMapMode('add')"
+                        style="display:none; background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; color: #fbbf24; border-radius: 8px; padding: 8px 12px; cursor: pointer;">Add Point</button>
+                    <button id="modifyMapRemoveBtn" onclick="setModifyOnMapMode('remove')"
+                        style="display:none; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; border-radius: 8px; padding: 8px 12px; cursor: pointer;">Remove Point</button>
+                </div>
+                <div id="modifyMapStatus" style="font-size: 12px; color: #93c5fd;"></div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: space-between;">
+                <button id="deleteRouteBtn" onclick="deleteSelectedRoute()"
+                    style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 8px 16px; cursor: pointer; display: none;">🗑️
+                    Delete Route</button>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="saveEditedRoute()"
+                        style="background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #22c55e; border-radius: 8px; padding: 8px 16px; cursor: pointer;">Save
+                        Changes</button>
+                    <button onclick="closeEditRouteDialog()"
+                        style="background: rgba(107, 114, 128, 0.2); border: 1px solid #6b7280; color: #6b7280; border-radius: 8px; padding: 8px 16px; cursor: pointer;">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Edit FAB — floats on map when "Modify on Map" mode is active -->
+        <div id="mapEditFAB" style="display:none; position:fixed; bottom:88px; right:20px; background:rgba(10,18,35,0.97); backdrop-filter:blur(20px); border:1px solid rgba(14,165,233,0.45); border-radius:16px; padding:16px; z-index:3100; box-shadow:0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(14,165,233,0.15); min-width:210px; color:#f1f5f9; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid rgba(148,163,184,0.12);">
+                <div style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981; flex-shrink:0; animation:pulseGreen 1.5s ease infinite;"></div>
+                <span style="font-size:13px; font-weight:700; color:#38bdf8; letter-spacing:0.02em;">Map Edit Mode</span>
+                <button onclick="toggleModifyOnMap()" title="Exit map edit mode" style="margin-left:auto; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#ef4444; border-radius:6px; width:24px; height:24px; cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; padding:0; transition:all 0.2s;">×</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px;">
+                <button id="fabMoveBtn" onclick="setModifyOnMapMode('move')" style="background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.45); color:#34d399; border-radius:8px; padding:8px 10px; cursor:pointer; font-size:12px; font-weight:600; text-align:left; transition:all 0.2s;">⟳ Move Points</button>
+                <button id="fabAddBtn" onclick="setModifyOnMapMode('add')" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.4); color:#fbbf24; border-radius:8px; padding:8px 10px; cursor:pointer; font-size:12px; font-weight:600; text-align:left; transition:all 0.2s;">+ Add Points</button>
+                <button id="fabRemoveBtn" onclick="setModifyOnMapMode('remove')" style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.4); color:#f87171; border-radius:8px; padding:8px 10px; cursor:pointer; font-size:12px; font-weight:600; text-align:left; transition:all 0.2s;">✕ Remove Points</button>
+            </div>
+            <div id="fabMapStatus" style="font-size:11px; color:#93c5fd; padding:6px 8px; background:rgba(14,165,233,0.08); border-radius:6px; border:1px solid rgba(14,165,233,0.18); margin-bottom:10px; min-height:22px;"></div>
+            <button onclick="toggleModifyOnMap()" style="width:100%; background:rgba(14,165,233,0.18); border:1px solid rgba(14,165,233,0.45); color:#38bdf8; border-radius:8px; padding:9px; cursor:pointer; font-size:12px; font-weight:600; transition:all 0.2s;">↩ Back to Editor</button>
+        </div>
+
+        <div id="simulateDialog">
+            <div class="dialog-header">
+                <h3>🚀 Transport Simulation</h3>
+                <button class="dialog-close" onclick="closeSimulateDialog()">×</button>
+            </div>
+
+            <div class="dialog-content">
+                <!-- Compact Mode Selection -->
+                <div class="form-section">
+                    <label class="section-label">🎯 Simulation Mode</label>
+                    <div class="mode-toggle">
+                        <input type="radio" id="autoMode" name="simMode" value="automatic" checked>
+                        <label for="autoMode" class="toggle-option">
+                            <span class="toggle-icon">🤖</span>
+                            <span class="toggle-text">Automatic</span>
+                        </label>
+
+                        <input type="radio" id="semiAutoMode" name="simMode" value="semiAuto">
+                        <label for="semiAutoMode" class="toggle-option">
+                            <span class="toggle-icon">🚦</span>
+                            <span class="toggle-text">Semi-Auto</span>
+                        </label>
+
+                        <input type="radio" id="manualMode" name="simMode" value="manual">
+                        <label for="manualMode" class="toggle-option">
+                            <span class="toggle-icon">🎮</span>
+                            <span class="toggle-text">Manual</span>
+                        </label>
+
+                        <input type="radio" id="careerMode" name="simMode" value="career">
+                        <label for="careerMode" class="toggle-option">
+                            <span class="toggle-icon">💰</span>
+                            <span class="toggle-text">Career</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Compact Vehicle & Speed Row -->
+                <div class="form-row">
+                    <div class="form-col">
+                        <label class="section-label">🚗 Vehicle</label>
+                        <select id="transportMode" class="compact-select" onchange="toggleCoachSelection(); toggleDrivingStyleRow();">
+                            <option value="car">🚗 Car</option>
+                            <option value="train">🚂 Train</option>
+                            <option value="flight">✈️ Flight</option>
+                            <option value="ship">🚢 Ship</option>
+                            <option value="hyperloop">🚅 Hyperloop</option>
+                            <option value="rocket">🚀 Rocket</option>
+                            <option value="submarine">🔱 Submarine</option>
+                            <option value="helicopter">🚁 Helicopter</option>
+                        </select>
+                    </div>
+                    <div class="form-col">
+                        <label class="section-label">⚡ Max Speed (km/h)</label>
+                        <input type="number" id="maxSpeedInput" class="compact-input" min="1" max="1000" value="120">
+                    </div>
+                </div>
+
+                <!-- Driving Style Row — visible for car/road only -->
+                <div id="drivingStyleRow" class="form-section" style="display:none;">
+                    <label class="section-label">🎯 Driving Style</label>
+                    <div class="driving-style-toggle">
+                        <input type="radio" id="dsSmooth" name="drivingStyle" value="smooth">
+                        <label for="dsSmooth" class="ds-option ds-option--smooth">
+                            <span class="ds-icon">🌊</span>
+                            <span class="ds-label">Smooth</span>
+                            <span class="ds-sub">−12% speed</span>
+                        </label>
+                        <input type="radio" id="dsNormal" name="drivingStyle" value="normal" checked>
+                        <label for="dsNormal" class="ds-option ds-option--normal">
+                            <span class="ds-icon">🚗</span>
+                            <span class="ds-label">Normal</span>
+                            <span class="ds-sub">At target</span>
+                        </label>
+                        <input type="radio" id="dsRushed" name="drivingStyle" value="rushed">
+                        <label for="dsRushed" class="ds-option ds-option--rushed">
+                            <span class="ds-icon">💨</span>
+                            <span class="ds-label">Rushed</span>
+                            <span class="ds-sub">Sharper turns</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Train Coach Selection (appears when train is selected) -->
+                <div id="coachSelectionSection" class="form-section" style="display: none;">
+                    <label class="section-label">🚂 Number of Coaches</label>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <input type="range" id="coachCountSlider" class="coach-slider" min="1" max="10" value="3"
+                                oninput="updateCoachCount()">
+                        </div>
+                        <div class="form-col-small">
+                            <span id="coachCountDisplay" class="coach-count">3</span>
+                        </div>
+                    </div>
+                    <div class="coach-preview" id="coachPreview">
+                        🚂🚃🚃
+                    </div>
+
+                    <!-- Train Color Selection -->
+                    <div class="form-row" style="margin-top: 15px;">
+                        <div class="form-col">
+                            <label class="section-label">🚂 Locomotive Color</label>
+                            <div class="color-input-group">
+                                <input type="color" id="locomotiveColorPicker" class="compact-color-picker"
+                                    value="#A0FF61" onchange="updateTrainColors()">
+                                <span class="color-code" id="locomotiveColorCode">#A0FF61</span>
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <label class="section-label">🚃 Coach Color</label>
+                            <div class="color-input-group">
+                                <input type="color" id="coachColorPicker" class="compact-color-picker" value="#FFDB57"
+                                    onchange="updateTrainColors()">
+                                <span class="color-code" id="coachColorCode">#FFDB57</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compact Route Color -->
+                <div class="form-section">
+                    <label class="section-label">🎨 Route Color</label>
+                    <div class="color-input-group">
+                        <input type="color" id="routeColorPicker" class="compact-color-picker" value="#454545">
+                        <span class="color-code" id="colorPreview">#454545</span>
+                    </div>
+                </div>
+
+                <!-- Station Delay Settings -->
+                <div class="form-section">
+                    <label class="section-label">🚉 Station Stop Delay</label>
+                    <div class="form-row">
+                        <div class="form-col">
+                            <input type="range" id="stationDelay" class="coach-slider" min="5" max="120" value="24"
+                                step="1" oninput="updateStationDelayDisplay(this.value)"
+                                onchange="updateStationDelay(this.value)">
+                        </div>
+                        <div class="form-col-small">
+                            <span id="stationDelayValue" class="coach-count">24s</span>
+                        </div>
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                        How long the train waits at each station before continuing
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compact Action Buttons -->
+            <div class="dialog-actions">
+                <button onclick="startSimulation()" class="btn-primary-compact">
+                    🚀 Start Simulation
+                </button>
+                <button onclick="closeSimulateDialog()" class="btn-secondary-compact">
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Manual driving controls -->
+        <div id="manualControlPanel" class="control-dashboard">
+            <div class="dashboard-header">
+                <div class="dashboard-title">
+                    <h3>Manual driving</h3>
+                    <div class="dashboard-status">
+                        <span class="status-indicator" id="statusIndicator">●</span>
+                        <span id="statusText">Ready</span>
+                    </div>
+                </div>
+                <div class="window-controls">
+                    <button class="window-btn minimize-btn" onclick="minimizeControlPanel()" title="Minimize" aria-label="Minimize manual controls">−</button>
+                    <button class="window-btn close-btn" onclick="closeControlPanel()" title="End simulation" aria-label="End simulation">×</button>
+                </div>
+            </div>
+
+            <div class="manual-compact" aria-label="Compact manual driving controls">
+                <button class="manual-compact-restore" onclick="minimizeControlPanel()" aria-label="Expand manual controls" title="Expand controls">↗</button>
+                <label for="compactSpeed">Limit <span id="compactSpeedValue">0 km/h</span></label>
+                <input id="compactSpeed" class="manual-driving-control" type="range" min="0" max="200" value="0" oninput="setTargetSpeedDirect(this.value)">
+                <label for="compactPower">Power <span id="compactPowerValue">0%</span></label>
+                <input id="compactPower" class="manual-driving-control" type="range" min="0" max="100" value="0" oninput="updateAccelerationFromSlider(this.value)">
+                <label for="compactBrake">Brake <span id="compactBrakeValue">0%</span></label>
+                <input id="compactBrake" class="manual-driving-control" type="range" min="0" max="100" value="0" oninput="updateBrakeFromSlider(this.value)">
+                <button class="manual-horn manual-driving-control" onclick="soundManualHorn()" style="display: none;">Horn</button>
+                <button id="compactDoors" class="manual-driving-control" onclick="toggleDoors()" aria-pressed="false">Open doors</button>
+                <button id="compactWiper" type="button" aria-pressed="false">Wiper</button>
+                <button id="compactAutopilot" class="manual-driving-control" type="button" aria-pressed="false">Autopilot off</button>
+                <button class="manual-compact-emergency manual-driving-control" onclick="emergencyBrake()">Emergency stop</button>
+            </div>
+
+            <div class="dashboard-content">
+                <div class="compact-status">
+                    <div class="status-item">
+                        <span class="status-label">Current speed</span>
+                        <span class="status-value"><span id="currentSpeedDisplay">0</span> <small>km/h</small></span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Limit</span>
+                        <span class="status-value"><span id="targetSpeedDisplay">0</span> <small>km/h</small></span>
+                    </div>
+                    <div class="status-item"><span class="status-label">Power</span><span class="status-value" id="accelerationDisplay">0%</span></div>
+                </div>
+
+                <div class="manual-target">
+                    <label for="targetSpeedInput">Speed limit <span>km/h</span></label>
+                    <div class="speed-input-row">
+                        <button class="speed-btn manual-driving-control" onclick="adjustSpeed(-10)" aria-label="Decrease speed limit by 10 km/h">−10</button>
+                        <input type="number" id="targetSpeedInput" class="speed-input manual-driving-control" min="0" max="200"
+                            value="0" onchange="setTargetSpeed()" aria-label="Speed limit in km/h">
+                        <button class="speed-btn manual-driving-control" onclick="adjustSpeed(10)" aria-label="Increase speed limit by 10 km/h">+10</button>
+                    </div>
+                    <div class="speed-presets">
+                        <button onclick="setTargetSpeedDirect(0)" class="preset-btn manual-driving-control" aria-label="Set speed limit to zero">0</button>
+                        <button onclick="setTargetSpeedDirect(60)" class="preset-btn manual-driving-control">60</button>
+                        <button onclick="setTargetSpeedDirect(120)" class="preset-btn manual-driving-control">120</button>
+                    </div>
+                </div>
+
+                <div class="manual-levers">
+                    <div class="manual-lever">
+                        <label for="accelerationSlider">Power <span id="accelerationValueDisplay">0%</span></label>
+                        <input type="range" id="accelerationSlider" class="manual-driving-control" min="0" max="100" value="0" step="1" oninput="updateAccelerationFromSlider(this.value)">
+                    </div>
+                    <div class="manual-lever">
+                        <label for="brakeSlider">Brake <span id="brakeValueDisplay">0%</span></label>
+                        <input type="range" id="brakeSlider" class="manual-driving-control" min="0" max="100" value="0" step="1" oninput="updateBrakeFromSlider(this.value)">
+                    </div>
+                </div>
+                <p class="manual-hint">Power drives acceleration; reducing the limit slows the vehicle. Brake overrides power.</p>
+                <div class="manual-actions">
+                    <button id="pauseBtn" class="manual-driving-control" onclick="pauseSimulation()">Pause</button>
+                    <button id="resumeBtn" class="manual-driving-control" onclick="resumeSimulation()" style="display: none;">Resume</button>
+                    <button id="doorsBtn" class="manual-driving-control" onclick="toggleDoors()" aria-pressed="false" style="display: none;">Open doors</button>
+                    <button class="manual-horn manual-driving-control" onclick="soundManualHorn()" style="display: none;">Horn</button>
+                    <button class="manual-emergency manual-driving-control" onclick="emergencyBrake()" aria-label="Emergency brake" title="Emergency brake">E-Stop</button>
+                    <button id="stopBtn" onclick="stopSimulation()" aria-label="End simulation">End</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weather Control Dialog -->
+        <div id="weatherDialog"
+            style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(20px); color: #f1f5f9; padding: 25px; border-radius: 20px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(148, 163, 184, 0.1); width: 350px; border: 1px solid rgba(148, 163, 184, 0.2); z-index: 1000;">
+            <div class="dialog-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3
+                    style="margin: 0; background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+                    🌦️ Weather Controls</h3>
+                <button onclick="closeWeatherDialog()"
+                    style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s ease;"
+                    onmouseover="this.style.background='rgba(239, 68, 68, 0.4)'"
+                    onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'">×</button>
+            </div>
+
+            <div class="weather-controls">
+                <!-- Day/Night Mode -->
+                <div class="weather-section" style="margin-bottom: 20px;">
+                    <label class="weather-label"
+                        style="display: block; margin-bottom: 8px; font-weight: 600; color: #cbd5e1;">🌅 Day/Night
+                        Mode</label>
+                    <div class="mode-toggle" style="display: flex; gap: 10px;">
+                        <label class="toggle-option day-night-option"
+                            style="flex: 1; text-align: center; padding: 8px; border: 2px solid #60a5fa; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #60a5fa 0%, #8b5cf6 100%); color: white;">
+                            <input type="radio" name="dayNightMode" value="day" checked style="display: none;">
+                            <span>☀️ Day</span>
+                        </label>
+                        <label class="toggle-option day-night-option"
+                            style="flex: 1; text-align: center; padding: 8px; border: 2px solid #475569; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; background: rgba(51, 65, 85, 0.3); color: #cbd5e1;">
+                            <input type="radio" name="dayNightMode" value="night" style="display: none;">
+                            <span>🌙 Night</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Rain Controls -->
+                <div class="weather-section" style="margin-bottom: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label class="weather-label" style="font-weight: 600; color: #cbd5e1;">🌧️ Rain</label>
+                        <label class="weather-toggle"
+                            style="position: relative; display: inline-block; width: 50px; height: 25px;">
+                            <input type="checkbox" id="rainToggle" style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider-toggle"
+                                style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .4s; border-radius: 25px;"></span>
+                        </label>
+                    </div>
+                    <div class="intensity-control">
+                        <label
+                            style="font-size: 12px; color: #94a3b8; margin-bottom: 5px; display: block;">Intensity</label>
+                        <input type="range" id="rainIntensity" min="1" max="10" value="5" step="1" disabled
+                            style="width: 100%; accent-color: #60a5fa;">
+                        <div
+                            style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 2px;">
+                            <span>Light</span>
+                            <span>Heavy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Snow Controls -->
+                <div class="weather-section" style="margin-bottom: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label class="weather-label" style="font-weight: 600; color: #cbd5e1;">❄️ Snow</label>
+                        <label class="weather-toggle"
+                            style="position: relative; display: inline-block; width: 50px; height: 25px;">
+                            <input type="checkbox" id="snowToggle" style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider-toggle"
+                                style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .4s; border-radius: 25px;"></span>
+                        </label>
+                    </div>
+                    <div class="intensity-control">
+                        <label
+                            style="font-size: 12px; color: #94a3b8; margin-bottom: 5px; display: block;">Intensity</label>
+                        <input type="range" id="snowIntensity" min="1" max="10" value="5" step="1" disabled
+                            style="width: 100%; accent-color: #60a5fa;">
+                        <div
+                            style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 2px;">
+                            <span>Light</span>
+                            <span>Heavy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Speed Controls -->
+                <div class="weather-section" style="margin-bottom: 20px;">
+                    <label class="weather-label"
+                        style="display: block; margin-bottom: 8px; font-weight: 600; color: #cbd5e1;">⚡ Falling
+                        Speed</label>
+                    <div class="intensity-control">
+                        <input type="range" id="weatherSpeed" min="0.5" max="3" value="1" step="0.1"
+                            style="width: 100%; accent-color: #10b981;">
+                        <div
+                            style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 2px;">
+                            <span>Slow</span>
+                            <span>Normal</span>
+                            <span>Fast</span>
+                        </div>
+                        <div style="text-align: center; margin-top: 5px; font-size: 11px; color: #94a3b8;">
+                            <span id="speedValue">1.0x</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Note -->
+                <div
+                    style="background: rgba(96, 165, 250, 0.1); border: 1px solid rgba(96, 165, 250, 0.3); border-radius: 8px; padding: 10px; margin-bottom: 15px; font-size: 11px; color: #94a3b8;">
+                    💡 <strong>Tip:</strong> Weather effects are applied to the map view only. Use intensity sliders to
+                    control effect strength.
+                </div>
+
+                <!-- Control Buttons -->
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button onclick="applyWeatherSettings()"
+                        style="flex: 1; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; border: none; border-radius: 10px; padding: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);"
+                        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(59, 130, 246, 0.4)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(59, 130, 246, 0.3)'">Apply</button>
+                    <button onclick="resetWeather()"
+                        style="flex: 1; background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; border-radius: 10px; padding: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;"
+                        onmouseover="this.style.background='rgba(239, 68, 68, 0.3)'; this.style.transform='translateY(-2px)'"
+                        onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.transform='translateY(0)'">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HUD Customization Dialog - Redesigned -->
+        <div id="hudCustomizeDialog"
+            style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.95)); backdrop-filter: blur(25px); color: #f8fafc; border-radius: 20px; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(148, 163, 184, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05); width: 520px; max-width: 95vw; max-height: 85vh; border: 1px solid rgba(148, 163, 184, 0.15); z-index: 2000; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+
+            <!-- Header with Gradient -->
+            <div class="dialog-header"
+                style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 20px 24px; border-bottom: 1px solid rgba(148, 163, 184, 0.1); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div
+                        style="width: 36px; height: 36px; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
+                        <span style="font-size: 18px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">🎨</span>
+                    </div>
+                    <div>
+                        <h3
+                            style="margin: 0; font-size: 18px; font-weight: 700; background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.2;">
+                            HUD Studio</h3>
+                        <p style="margin: 0; font-size: 12px; color: #94a3b8; font-weight: 500;">Customize your
+                            interface</p>
+                    </div>
+                </div>
+                <button onclick="closeHUDCustomizeDialog()"
+                    style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; border-radius: 8px; padding: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.2s ease; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"
+                    onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.transform='scale(1.05)'"
+                    onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.transform='scale(1)'">×</button>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="hud-customize-content"
+                style="padding: 0; max-height: calc(85vh - 80px); overflow-y: auto; overflow-x: hidden;">
+                <div style="padding: 24px;">
+
+                    <!-- Advanced Color Customization -->
+                    <div class="section-card"
+                        style="background: rgba(51, 65, 85, 0.3); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 12px; padding: 20px; margin-bottom: 20px; position: relative; overflow: hidden;">
+                        <div
+                            style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #00ff88, #00ffff, #ff4499);">
+                        </div>
+                        <div class="section-header"
+                            style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                            <span style="font-size: 20px;">�</span>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #e2e8f0;">Comprehensive
+                                Color Customization</h4>
+                        </div>
+
+                        <!-- Color Grid - 6 colors in 2 rows -->
+                        <div
+                            style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px;">
+                            <!-- Primary Color -->
+                            <div class="color-input-group">
+                                <label
+                                    style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: #cbd5e1;">Primary</label>
+                                <div
+                                    style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; padding: 6px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                                    <input type="color" id="hudPrimaryColor" value="#00ff88"
+                                        onchange="updateHUDColor('primary', this.value)"
+                                        style="width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; background: none;">
+                                    <span id="hudPrimaryColorCode"
+                                        style="font-family: 'SF Mono', Monaco, monospace; color: #94a3b8; font-size: 10px; font-weight: 500;">#00ff88</span>
+                                </div>
+                            </div>
+
+                            <!-- Secondary Color -->
+                            <div class="color-input-group">
+                                <label
+                                    style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: #cbd5e1;">Secondary</label>
+                                <div
+                                    style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; padding: 6px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                                    <input type="color" id="hudSecondaryColor" value="#00ffff"
+                                        onchange="updateHUDColor('secondary', this.value)"
+                                        style="width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; background: none;">
+                                    <span id="hudSecondaryColorCode"
+                                        style="font-family: 'SF Mono', Monaco, monospace; color: #94a3b8; font-size: 10px; font-weight: 500;">#00ffff</span>
+                                </div>
+                            </div>
+
+                            <!-- Accent Color -->
+                            <div class="color-input-group">
+                                <label
+                                    style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: #cbd5e1;">Accent</label>
+                                <div
+                                    style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; padding: 6px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                                    <input type="color" id="hudAccentColor" value="#ff4499"
+                                        onchange="updateHUDColor('accent', this.value)"
+                                        style="width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; background: none;">
+                                    <span id="hudAccentColorCode"
+                                        style="font-family: 'SF Mono', Monaco, monospace; color: #94a3b8; font-size: 10px; font-weight: 500;">#ff4499</span>
+                                </div>
+                            </div>
+
+                            <!-- Warning Color -->
+                            <div class="color-input-group">
+                                <label
+                                    style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: #cbd5e1;">Warning</label>
+                                <div
+                                    style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; padding: 6px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                                    <input type="color" id="hudWarningColor" value="#ffaa00"
+                                        onchange="updateHUDColor('warning', this.value)"
+                                        style="width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; background: none;">
+                                    <span id="hudWarningColorCode"
+                                        style="font-family: 'SF Mono', Monaco, monospace; color: #94a3b8; font-size: 10px; font-weight: 500;">#ffaa00</span>
+                                </div>
+                            </div>
+
+                            <!-- Danger Color -->
+                            <div class="color-input-group">
+                                <label
+                                    style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: #cbd5e1;">Danger</label>
+                                <div
+                                    style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; padding: 6px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                                    <input type="color" id="hudDangerColor" value="#ff3333"
+                                        onchange="updateHUDColor('danger', this.value)"
+                                        style="width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; background: none;">
+                                    <span id="hudDangerColorCode"
+                                        style="font-family: 'SF Mono', Monaco, monospace; color: #94a3b8; font-size: 10px; font-weight: 500;">#ff3333</span>
+                                </div>
+                            </div>
+
+                            <!-- Info Color -->
+                            <div class="color-input-group">
+                                <label
+                                    style="display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; color: #cbd5e1;">Info</label>
+                                <div
+                                    style="display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; padding: 6px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                                    <input type="color" id="hudInfoColor" value="#3399ff"
+                                        onchange="updateHUDColor('info', this.value)"
+                                        style="width: 28px; height: 28px; border-radius: 4px; border: none; cursor: pointer; background: none;">
+                                    <span id="hudInfoColorCode"
+                                        style="font-family: 'SF Mono', Monaco, monospace; color: #94a3b8; font-size: 10px; font-weight: 500;">#3399ff</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Color Presets -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <button onclick="applyColorPreset('cyberpunk')"
+                                style="flex: 1; padding: 8px; background: linear-gradient(135deg, #00ff88, #00ffff); color: #000; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">Cyberpunk</button>
+                            <button onclick="applyColorPreset('neon')"
+                                style="flex: 1; padding: 8px; background: linear-gradient(135deg, #ff0080, #8000ff); color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">Neon</button>
+                            <button onclick="applyColorPreset('matrix')"
+                                style="flex: 1; padding: 8px; background: linear-gradient(135deg, #00ff00, #008800); color: #000; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">Matrix</button>
+                            <button onclick="applyColorPreset('sunset')"
+                                style="flex: 1; padding: 8px; background: linear-gradient(135deg, #ff6b35, #f7931e); color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">Sunset</button>
+                        </div>
+
+                        <!-- HUD Scale Control -->
+                        <div style="border-top: 1px solid rgba(148, 163, 184, 0.1); padding-top: 16px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label style="font-size: 13px; font-weight: 500; color: #cbd5e1;">HUD Scale</label>
+                                <span id="hudScaleValue"
+                                    style="color: #00ff88; font-weight: 600; font-size: 12px; background: rgba(0, 255, 136, 0.1); padding: 4px 8px; border-radius: 6px;">100%</span>
+                            </div>
+                            <input type="range" id="hudScale" min="50" max="150" value="100" step="5"
+                                onchange="updateHUDScale(this.value)"
+                                style="width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(to right, rgba(0, 255, 136, 0.2) 0%, rgba(0, 255, 136, 0.6) 100%); outline: none; -webkit-appearance: none; appearance: none;">
+                            <div
+                                style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 4px;">
+                                <span>50%</span>
+                                <span>100%</span>
+                                <span>150%</span>
+                            </div>
+                            <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+                                Resize all HUD elements proportionally
+                            </div>
+                        </div>
+
+                        <!-- Glow / Bloom Slider -->
+                        <div style="border-top: 1px solid rgba(148, 163, 184, 0.1); padding-top: 16px; margin-top: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label style="font-size: 13px; font-weight: 500; color: #cbd5e1;">✨ Glow Intensity</label>
+                                <span id="hudGlowValue" style="color: #a78bfa; font-weight: 600; font-size: 12px; background: rgba(167, 139, 250, 0.1); padding: 4px 8px; border-radius: 6px;">30%</span>
+                            </div>
+                            <input type="range" id="hudGlowSlider" min="0" max="100" value="30" step="5"
+                                oninput="updateHUDGlow(this.value)"
+                                style="width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(to right, rgba(167, 139, 250, 0.2) 0%, rgba(167, 139, 250, 0.7) 100%); outline: none; -webkit-appearance: none; appearance: none;">
+                            <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 4px;">
+                                <span>Off</span>
+                                <span>Medium</span>
+                                <span>Max</span>
+                            </div>
+                            <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+                                Controls glow/bloom on panels, values, and borders
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- HUD Profile Save / Load -->
+                    <div class="section-card" style="background: rgba(51, 65, 85, 0.3); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 12px; padding: 20px; margin-bottom: 20px; position: relative; overflow: hidden;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #f59e0b, #10b981, #3b82f6);"></div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                            <span style="font-size: 20px;">💾</span>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #e2e8f0;">HUD Profiles</h4>
+                        </div>
+                        <!-- Save New Profile -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                            <input type="text" id="hudProfileNameInput" placeholder="Profile name…"
+                                style="flex: 1; padding: 8px 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; color: #f1f5f9; font-size: 12px; outline: none;">
+                            <button onclick="saveHUDProfile()" style="background: linear-gradient(135deg, #10b981, #059669); border: none; color: #fff; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; transition: all 0.2s;">Save</button>
+                        </div>
+                        <!-- Load / Delete -->
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="hudProfileSelect" style="flex: 1; padding: 8px 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; color: #f1f5f9; font-size: 12px; outline: none;">
+                                <option value="">— select profile —</option>
+                            </select>
+                            <button onclick="loadHUDProfile()" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.45); color: #93c5fd; border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s;">Load</button>
+                            <button onclick="deleteHUDProfile()" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); color: #f87171; border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s;">Del</button>
+                        </div>
+                        <div id="hudProfileStatus" style="font-size: 11px; color: #94a3b8; margin-top: 10px; min-height: 16px;"></div>
+                    </div>
+
+                    <!-- HUD Theme Gallery Section -->
+                    <div class="section-card"
+                        style="background: rgba(51, 65, 85, 0.3); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 12px; padding: 20px; margin-bottom: 20px; position: relative; overflow: hidden;">
+                        <div
+                            style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #8b5cf6, #ec4899, #f59e0b);">
+                        </div>
+                        <div class="section-header"
+                            style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                            <span style="font-size: 20px;">🎨</span>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #e2e8f0;">HUD Theme Gallery
+                            </h4>
+                        </div>
+
+                        <!-- Theme Cards Grid -->
+                        <div class="theme-gallery"
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px;">
+
+                            <!-- Gradient Theme -->
+                            <div class="theme-card" data-theme="gradient" onclick="selectHUDTheme('gradient')"
+                                style="position: relative; aspect-ratio: 3/2; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent; overflow: hidden; background: linear-gradient(135deg, rgba(0, 255, 136, 0.15) 0%, rgba(0, 255, 255, 0.1) 100%); backdrop-filter: blur(10px);">
+                                <div
+                                    style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px;">
+                                    <div style="font-size: 16px; margin-bottom: 4px;">🌈</div>
+                                    <div
+                                        style="font-size: 10px; font-weight: 600; color: #e2e8f0; text-align: center; line-height: 1.2;">
+                                        Gradient<br>Fusion</div>
+                                </div>
+                                <div class="theme-preview"
+                                    style="position: absolute; bottom: 4px; left: 4px; right: 4px; height: 20px; background: linear-gradient(90deg, #00ff88, #00ffff); border-radius: 4px; opacity: 0.7;">
+                                </div>
+                            </div>
+
+                            <!-- Glass Theme -->
+                            <div class="theme-card" data-theme="glass" onclick="selectHUDTheme('glass')"
+                                style="position: relative; aspect-ratio: 3/2; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent; overflow: hidden; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255, 255, 255, 0.2);">
+                                <div
+                                    style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px;">
+                                    <div style="font-size: 16px; margin-bottom: 4px;">🪟</div>
+                                    <div
+                                        style="font-size: 10px; font-weight: 600; color: #e2e8f0; text-align: center; line-height: 1.2;">
+                                        Glass<br>Morphism</div>
+                                </div>
+                                <div class="theme-preview"
+                                    style="position: absolute; bottom: 4px; left: 4px; right: 4px; height: 20px; background: linear-gradient(90deg, rgba(255,255,255,0.3), rgba(255,255,255,0.1)); border-radius: 4px; backdrop-filter: blur(5px);">
+                                </div>
+                            </div>
+
+                            <!-- Neon Theme -->
+                            <div class="theme-card" data-theme="neon" onclick="selectHUDTheme('neon')"
+                                style="position: relative; aspect-ratio: 3/2; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent; overflow: hidden; background: rgba(0, 0, 0, 0.8); box-shadow: 0 0 20px rgba(0, 255, 136, 0.3), inset 0 0 20px rgba(0, 255, 136, 0.1);">
+                                <div
+                                    style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px;">
+                                    <div style="font-size: 16px; margin-bottom: 4px;">⚡</div>
+                                    <div
+                                        style="font-size: 10px; font-weight: 600; color: #00ff88; text-align: center; line-height: 1.2; text-shadow: 0 0 10px #00ff88;">
+                                        Neon<br>Glow</div>
+                                </div>
+                                <div class="theme-preview"
+                                    style="position: absolute; bottom: 4px; left: 4px; right: 4px; height: 20px; background: #000; border-radius: 4px; box-shadow: 0 0 15px #00ff88; border: 1px solid #00ff88;">
+                                </div>
+                            </div>
+
+                            <!-- Solid Theme -->
+                            <div class="theme-card" data-theme="solid" onclick="selectHUDTheme('solid')"
+                                style="position: relative; aspect-ratio: 3/2; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent; overflow: hidden; background: rgba(0, 255, 136, 0.15);">
+                                <div
+                                    style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px;">
+                                    <div style="font-size: 16px; margin-bottom: 4px;">⚫</div>
+                                    <div
+                                        style="font-size: 10px; font-weight: 600; color: #e2e8f0; text-align: center; line-height: 1.2;">
+                                        Solid<br>Material</div>
+                                </div>
+                                <div class="theme-preview"
+                                    style="position: absolute; bottom: 4px; left: 4px; right: 4px; height: 20px; background: #00ff88; border-radius: 4px; opacity: 0.8;">
+                                </div>
+                            </div>
+
+                            <!-- Minimal Theme -->
+                            <div class="theme-card" data-theme="minimal" onclick="selectHUDTheme('minimal')"
+                                style="position: relative; aspect-ratio: 3/2; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent; overflow: hidden; background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(5px); border: 1px solid rgba(255, 255, 255, 0.1);">
+                                <div
+                                    style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px;">
+                                    <div style="font-size: 16px; margin-bottom: 4px;">✨</div>
+                                    <div
+                                        style="font-size: 10px; font-weight: 600; color: #e2e8f0; text-align: center; line-height: 1.2;">
+                                        Minimal<br>Clean</div>
+                                </div>
+                                <div class="theme-preview"
+                                    style="position: absolute; bottom: 4px; left: 4px; right: 4px; height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; border: 1px solid rgba(255,255,255,0.2);">
+                                </div>
+                            </div>
+
+                            <!-- Transparent Theme -->
+                            <div class="theme-card" data-theme="none" onclick="selectHUDTheme('none')"
+                                style="position: relative; aspect-ratio: 3/2; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent; overflow: hidden; background: transparent; border: 2px dashed rgba(148, 163, 184, 0.3);">
+                                <div
+                                    style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px;">
+                                    <div style="font-size: 16px; margin-bottom: 4px;">🚫</div>
+                                    <div
+                                        style="font-size: 10px; font-weight: 600; color: #94a3b8; text-align: center; line-height: 1.2;">
+                                        No<br>Background</div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Selected Theme Info -->
+                        <div class="selected-theme-info"
+                            style="background: rgba(15, 23, 42, 0.5); border-radius: 8px; padding: 12px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                            <div
+                                style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="font-size: 12px; font-weight: 600; color: #cbd5e1;">Active Theme</span>
+                                <span id="selectedThemeName"
+                                    style="font-size: 11px; color: #60a5fa; font-weight: 500;">Gradient Fusion</span>
+                            </div>
+                            <div id="selectedThemeDescription"
+                                style="font-size: 10px; color: #94a3b8; line-height: 1.4;">Modern gradient overlay with
+                                dynamic blur effects and transparency for enhanced readability.</div>
+                        </div>
+
+                        <!-- Custom Color Section for Advanced Users -->
+                        <div id="customThemeSection" style="margin-top: 12px; display: none;">
+                            <div
+                                style="display: flex; align-items: center; gap: 8px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; padding: 12px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                                <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                    <span style="font-size: 12px; font-weight: 500; color: #cbd5e1;">Custom
+                                        Color:</span>
+                                    <input type="color" id="hudBackgroundColor" value="#001122"
+                                        onchange="updateHUDBackgroundColor(this.value)"
+                                        style="width: 32px; height: 32px; border-radius: 6px; border: none; cursor: pointer; background: none;">
+                                    <span id="hudBackgroundColorCode"
+                                        style="font-family: 'SF Mono', Monaco, monospace; color: #94a3b8; font-size: 11px; font-weight: 500;">#001122</span>
+                                </div>
+                                <button onclick="selectHUDTheme('custom-color')"
+                                    style="padding: 6px 12px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; border: none; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
+                                    onmouseover="this.style.transform='scale(1.05)'"
+                                    onmouseout="this.style.transform='scale(1)'">Apply</button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                            <button onclick="toggleCustomTheme()"
+                                style="flex: 1; padding: 8px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;"
+                                onmouseover="this.style.background='rgba(59, 130, 246, 0.2)'"
+                                onmouseout="this.style.background='rgba(59, 130, 246, 0.1)'">
+                                <span id="customToggleText">🎨 Custom Color</span>
+                            </button>
+                            <button onclick="resetHUDTheme()"
+                                style="flex: 1; padding: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;"
+                                onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'"
+                                onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
+                                🔄 Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Transparency Controls -->
+                    <div class="section-card"
+                        style="background: rgba(51, 65, 85, 0.3); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 12px; padding: 20px; margin-bottom: 20px; position: relative; overflow: hidden;">
+                        <div
+                            style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #ec4899, #f59e0b, #10b981);">
+                        </div>
+                        <div class="section-header"
+                            style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                            <span style="font-size: 20px;">🔧</span>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #e2e8f0;">Transparency</h4>
+                        </div>
+
+                        <!-- Background Opacity -->
+                        <div style="margin-bottom: 20px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label style="font-size: 13px; font-weight: 500; color: #cbd5e1;">Background
+                                    Opacity</label>
+                                <span id="hudBgOpacityValue"
+                                    style="color: #3b82f6; font-weight: 600; font-size: 12px; background: rgba(59, 130, 246, 0.1); padding: 4px 8px; border-radius: 6px;">50%</span>
+                            </div>
+                            <div style="position: relative;">
+                                <input type="range" id="hudBgOpacity" min="0" max="100" value="50" step="5"
+                                    onchange="updateHUDBgOpacity(this.value)"
+                                    style="width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(to right, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.6) 100%); outline: none; -webkit-appearance: none; appearance: none;">
+                                <div
+                                    style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 4px;">
+                                    <span>Transparent</span>
+                                    <span>Opaque</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Text Opacity -->
+                        <div>
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label style="font-size: 13px; font-weight: 500; color: #cbd5e1;">Text Opacity</label>
+                                <span id="hudTextOpacityValue"
+                                    style="color: #8b5cf6; font-weight: 600; font-size: 12px; background: rgba(139, 92, 246, 0.1); padding: 4px 8px; border-radius: 6px;">100%</span>
+                            </div>
+                            <div style="position: relative;">
+                                <input type="range" id="hudTextOpacity" min="30" max="100" value="100" step="5"
+                                    onchange="updateHUDTextOpacity(this.value)"
+                                    style="width: 100%; height: 6px; border-radius: 3px; background: linear-gradient(to right, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0.8) 100%); outline: none; -webkit-appearance: none; appearance: none;">
+                                <div
+                                    style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 4px;">
+                                    <span>Faded</span>
+                                    <span>Bright</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Layout & Position -->
+                    <div class="section-card"
+                        style="background: rgba(51, 65, 85, 0.3); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 12px; padding: 20px; margin-bottom: 20px; position: relative; overflow: hidden;">
+                        <div
+                            style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6);">
+                        </div>
+                        <div class="section-header"
+                            style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                            <span style="font-size: 20px;">📍</span>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 600; color: #e2e8f0;">Layout & Position
+                            </h4>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                            <button id="toggleEditModeBtn" onclick="toggleHUDEditMode()"
+                                style="padding: 12px; border: none; border-radius: 10px; background: linear-gradient(135deg, #10b981, #059669); color: white; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 6px;"
+                                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(16, 185, 129, 0.4)'"
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.3)'">
+                                <span>🎯</span>
+                                <span>Drag Mode</span>
+                            </button>
+
+                            <button onclick="resetHUDPositions()"
+                                style="padding: 12px; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
+                                onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.transform='translateY(-1px)'"
+                                onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.transform='translateY(0)'">
+                                <span>🔄</span>
+                                <span>Reset</span>
+                            </button>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                            <button onclick="exportHUDLayoutToFile()"
+                                style="padding: 12px; border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 10px; background: rgba(59, 130, 246, 0.12); color: #60a5fa; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
+                                onmouseover="this.style.background='rgba(59, 130, 246, 0.2)'; this.style.transform='translateY(-1px)'"
+                                onmouseout="this.style.background='rgba(59, 130, 246, 0.12)'; this.style.transform='translateY(0)'">
+                                <span>💾</span>
+                                <span>Export Layout</span>
+                            </button>
+
+                            <button onclick="importHUDLayoutFromPicker()"
+                                style="padding: 12px; border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 10px; background: rgba(168, 85, 247, 0.12); color: #c084fc; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
+                                onmouseover="this.style.background='rgba(168, 85, 247, 0.2)'; this.style.transform='translateY(-1px)'"
+                                onmouseout="this.style.background='rgba(168, 85, 247, 0.12)'; this.style.transform='translateY(0)'">
+                                <span>📂</span>
+                                <span>Import Layout</span>
+                            </button>
+                        </div>
+
+                        <input type="file" id="hudLayoutImportInput" accept="application/json,.json" onchange="handleHUDLayoutImport(event)" style="display: none;">
+                        <div id="hudLayoutStatus" style="min-height: 16px; margin-bottom: 16px; font-size: 11px; color: #94a3b8;"></div>
+
+                        <div
+                            style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; padding: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span style="font-size: 14px;">💡</span>
+                                <span style="font-size: 12px; font-weight: 600; color: #3b82f6;">Pro Tip</span>
+                            </div>
+                            <p style="margin: 0; font-size: 11px; color: #94a3b8; line-height: 1.4;">Enable drag mode to
+                                reposition and resize HUD elements, including the career economy panel when it is visible. Export the saved layout as a JSON file whenever you want to share it.</p>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div
+                style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 20px 24px; border-top: 1px solid rgba(148, 163, 184, 0.1); display: flex; gap: 12px; position: sticky; bottom: 0; z-index: 10;">
+                <button onclick="resetHUDCustomization()"
+                    style="flex: 1; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; border-radius: 10px; padding: 12px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px;"
+                    onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.transform='translateY(-1px)'"
+                    onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.transform='translateY(0)'">
+                    <span>🔄</span>
+                    <span>Reset All</span>
+                </button>
+                <button onclick="closeHUDCustomizeDialog()"
+                    style="flex: 2; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 10px; padding: 12px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 6px;"
+                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.4)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(16, 185, 129, 0.3)'">
+                    <span>✅</span>
+                    <span>Apply Changes</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Settings Dialog for Vehicle Sizing -->
+        <div id="settingsDialog" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(8,10,22,0.96); backdrop-filter: blur(24px); border: 1px solid rgba(16,185,129,0.3); border-radius: 18px; padding: 24px; box-shadow: 0 12px 48px rgba(0,0,0,0.7); width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto; padding-right: 20px; z-index: 5000; color: #cbd5e1; font-family: 'Inter', 'Segoe UI', sans-serif;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #e2e8f0; font-size: 18px; font-weight: 600;">⚙️ Display Settings</h3>
+                <button onclick="closeSettingsDialog()" style="background: none; border: none; color: #cbd5e1; font-size: 24px; cursor: pointer; padding: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">×</button>
+            </div>
+
+            <div class="instrument-setting">
+                <label for="voiceAnnouncementsToggle" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer;">
+                    <span>Train &amp; Voice Announcements</span>
+                    <input id="voiceAnnouncementsToggle" type="checkbox" checked onchange="setVoiceAnnouncements(this.checked)" style="width: 18px; height: 18px; accent-color: #10b981; cursor: pointer;">
+                </label>
+                <p>Enable crew-style announcements for all vehicles, including departures, arrivals and safety alerts. Saved on this device.</p>
+            </div>
+            <div class="instrument-setting">
+                <label for="ttsVoiceSelect">Announcer Voice</label>
+                <div style="display: flex; gap: 8px;">
+                    <select id="ttsVoiceSelect" onchange="setTtsVoice(this.value)" style="flex: 1; min-width: 0;">
+                        <option value="">Automatic (best English voice)</option>
+                    </select>
+                    <button type="button" onclick="previewTtsVoice()" style="padding: 6px 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.5); color: #10b981; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600;">Preview</button>
+                </div>
+                <p id="ttsVoiceHint">Lists the speech voices installed on this device.</p>
+                <p id="ttsStatus" role="status" aria-live="polite">Use Preview to test your voice and voice volume.</p>
+            </div>
+
+            <!-- Vehicle Size Control -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #e2e8f0;">🚂 Vehicle Size Scale</label>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="range" id="vehicleSizeSlider" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateVehicleSize(this.value)" style="flex: 1; accent-color: #10b981; cursor: pointer;">
+                    <span id="vehicleSizeValue" style="min-width: 35px; text-align: center; color: #10b981; font-weight: 600;">100%</span>
+                </div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 8px;">Scale: <span id="vehicleSizePercent">100</span>% (0.5× to 2.0×)</div>
+            </div>
+            <div class="instrument-setting">
+                <label for="coachTypeSelect">2D Coach Type</label>
+                <select id="coachTypeSelect" onchange="setCoachType(this.value)">
+                    <option value="opaque">Opaque (default)</option>
+                    <option value="transparent">Transparent — show passengers</option>
+                </select>
+                <p>Transparent coaches show passenger dots in non-career 2D train journeys. Career mode keeps its existing passenger view.</p>
+            </div>
+
+            <!-- Station Size Control -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #e2e8f0;">🚉 Station Size Scale</label>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="range" id="stationSizeSlider" min="0.6" max="2.5" step="0.1" value="1.0" oninput="updateStationSize(this.value)" style="flex: 1; accent-color: #10b981; cursor: pointer;">
+                    <span id="stationSizeValue" style="min-width: 35px; text-align: center; color: #10b981; font-weight: 600;">100%</span>
+                </div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 8px;">Default: <span id="stationSizePercent">100</span>% (0.6× to 2.5×)</div>
+            </div>
+
+            <!-- Unit System Toggle -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #e2e8f0;">📏 Distance &amp; Speed Units</label>
+                <div style="display: flex; gap: 8px;">
+                    <button id="unitKmBtn" onclick="setUnitSystem(false)" style="flex: 1; padding: 10px; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #10b981; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s ease;">
+                        🌍 km/h &bull; km
+                    </button>
+                    <button id="unitMphBtn" onclick="setUnitSystem(true)" style="flex: 1; padding: 10px; background: rgba(51, 65, 85, 0.5); border: 1px solid rgba(71, 85, 105, 0.5); color: #94a3b8; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s ease;">
+                        🇺🇸 mph &bull; mi
+                    </button>
+                </div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 6px;">Auto-detected from browser locale</div>
+            </div>
+
+            <!-- Default Dynamics Preferences -->
+            <div style="margin-bottom: 20px; padding-top: 4px; border-top: 1px solid rgba(71,85,105,0.35);">
+                <label style="display: block; margin-bottom: 10px; font-size: 13px; font-weight: 600; color: #e2e8f0;">🛠️ Default Simulation Preferences</label>
+                <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px;">
+                    <label for="defaultMaxSpeed" style="font-size: 12px; color: #cbd5e1;">Default Max Speed (km/h)</label>
+                    <input id="defaultMaxSpeed" type="number" min="1" max="1500" step="1" value="120" onchange="setDefaultMaxSpeed(this.value)" style="width: 105px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(71,85,105,0.7); background: rgba(15,23,42,0.8); color: #e2e8f0; font-size: 12px;">
+
+                    <label for="defaultAccelGForce" style="font-size: 12px; color: #cbd5e1;">Default Accel G-Force</label>
+                    <input id="defaultAccelGForce" type="number" min="0.05" max="2.0" step="0.05" value="0.10" onchange="setDefaultAccelGForce(this.value)" style="width: 105px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(71,85,105,0.7); background: rgba(15,23,42,0.8); color: #e2e8f0; font-size: 12px;">
+
+                    <label for="defaultDecelGForce" style="font-size: 12px; color: #cbd5e1;">Default Decel G-Force</label>
+                    <input id="defaultDecelGForce" type="number" min="0.05" max="2.0" step="0.05" value="0.05" onchange="setDefaultDecelGForce(this.value)" style="width: 105px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(71,85,105,0.7); background: rgba(15,23,42,0.8); color: #e2e8f0; font-size: 12px;">
+                </div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">
+                    Applied automatically on startup and prefilled for each new simulation.
+                </div>
+            </div>
+
+            <!-- Map Container Size -->
+            <div style="margin-bottom: 20px; padding-top: 4px; border-top: 1px solid rgba(71,85,105,0.35);">
+                <label style="display: block; margin-bottom: 10px; font-size: 13px; font-weight: 600; color: #e2e8f0;">🗺️ Map Container Size</label>
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 12px; color: #cbd5e1;">Width</span>
+                        <span id="mapContainerWidthValue" style="font-size: 12px; color: #10b981; font-weight: 700;">100%</span>
+                    </div>
+                    <input id="mapContainerWidth" type="range" min="60" max="100" step="1" value="100"
+                        oninput="setMapContainerWidth(this.value)" style="width: 100%; accent-color: #10b981; cursor: pointer;">
+                </div>
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 12px; color: #cbd5e1;">Height</span>
+                        <span id="mapContainerHeightValue" style="font-size: 12px; color: #10b981; font-weight: 700;">600px</span>
+                    </div>
+                    <input id="mapContainerHeight" type="range" min="400" max="1200" step="10" value="600"
+                        oninput="setMapContainerHeight(this.value)" style="width: 100%; accent-color: #10b981; cursor: pointer;">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label for="mapQualitySelect" style="display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #e2e8f0;">Map Quality</label>
+                <select id="mapQualitySelect" onchange="setMapQuality(this.value)" style="width: 100%; padding: 8px; border-radius: 6px; background: #0f172a; color: #cbd5e1; border: 1px solid #475569;">
+                    <option value="low">Low - fewer detailed tiles</option>
+                    <option value="medium">Medium - balanced detail</option>
+                    <option value="high">High - maximum available detail / high DPI</option>
+                </select>
+                <p style="font-size: 11px; color: #94a3b8; margin-bottom: 0;">Defaults to High on desktop and Low on mobile. Saved choices override the default. Detail depends on imagery coverage.</p>
+            </div>
+
+            <div style="margin-bottom: 20px; padding: 16px; border: 1px solid rgba(71,85,105,0.55); border-radius: 10px; background: rgba(15,23,42,0.45);">
+                <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: #e2e8f0;">🔐 Local API Settings</label>
+                <p style="font-size: 11px; color: #94a3b8; margin: 0 0 12px;">Values are stored only in this browser and are never added to the GitHub repository or build. Use provider-restricted browser keys.</p>
+
+                <label for="googleMapsApiKeySetting" style="display: block; margin-bottom: 5px; font-size: 12px; color: #cbd5e1;">Google Maps API key</label>
+                <input id="googleMapsApiKeySetting" type="password" autocomplete="off" spellcheck="false" placeholder="Restricted to this site's referrer" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; margin-bottom: 10px;">
+
+                <label for="cesiumIonTokenSetting" style="display: block; margin-bottom: 5px; font-size: 12px; color: #cbd5e1;">Cesium ion token (optional)</label>
+                <input id="cesiumIonTokenSetting" type="password" autocomplete="off" spellcheck="false" placeholder="Optional restricted access token" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; margin-bottom: 10px;">
+
+                <label for="weatherProxyUrlSetting" style="display: block; margin-bottom: 5px; font-size: 12px; color: #cbd5e1;">Weather proxy URL (recommended)</label>
+                <input id="weatherProxyUrlSetting" type="url" autocomplete="off" spellcheck="false" placeholder="https://your-secure-proxy.example/weather" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; margin-bottom: 10px;">
+
+                <label for="openWeatherApiKeySetting" style="display: block; margin-bottom: 5px; font-size: 12px; color: #cbd5e1;">Personal OpenWeather key (fallback)</label>
+                <input id="openWeatherApiKeySetting" type="password" autocomplete="off" spellcheck="false" placeholder="Kept on this device only" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; margin-bottom: 8px;">
+                <p style="font-size: 11px; color: #fbbf24; margin: 0 0 10px;">A directly configured OpenWeather key is visible to this browser profile and network tools. Prefer a restricted serverless proxy for shared deployments.</p>
+
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" onclick="saveApiConnectionSettings()" style="flex: 1; padding: 9px 12px; background: rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.5); color: #6ee7b7; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 600;">Save on this device</button>
+                    <button type="button" onclick="clearApiConnectionSettings()" style="padding: 9px 12px; background: rgba(71,85,105,0.25); border: 1px solid #475569; color: #cbd5e1; border-radius: 7px; cursor: pointer; font-size: 12px;">Clear</button>
+                </div>
+                <div id="apiSettingsStatus" role="status" style="min-height: 16px; margin-top: 8px; font-size: 11px; color: #94a3b8;"></div>
+            </div>
+
+            <!-- Career Mode Settings -->
+            <div class="instrument-setting">
+                <label for="speedometerModeSelect">Speedometer</label>
+                <select id="speedometerModeSelect" onchange="setSpeedometerMode(this.value)">
+                    <option value="combined">Analog + Digital (default)</option>
+                    <option value="analog">Analog</option>
+                    <option value="digital">Digital</option>
+                </select>
+                <p>Dial scale follows the selected maximum speed and distance units.</p>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label for="graphicsQualitySelect" style="display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #e2e8f0;">3D Graphics Quality</label>
+                <select id="graphicsQualitySelect" onchange="set3DGraphicsQuality(this.value)" style="width: 100%; padding: 8px; border-radius: 6px; background: #0f172a; color: #cbd5e1; border: 1px solid #475569;">
+                    <option value="performance">Performance - lower resolution and longer battery life</option>
+                    <option value="balanced">Balanced - recommended</option>
+                    <option value="high">High - sharper 3D rendering and farther detail</option>
+                </select>
+                <p style="font-size: 11px; color: #94a3b8; margin-bottom: 0;">Resolution adapts to the device display and frame budget. Performance Mode still provides a hard battery-saving cap.</p>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label for="targetFPSSelect" style="display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #e2e8f0;">Simulation FPS Limit</label>
+                <select id="targetFPSSelect" onchange="setTargetFPS(this.value)" style="width: 100%; padding: 8px; border-radius: 6px; background: #0f172a; color: #cbd5e1; border: 1px solid #475569;">
+                    <option value="30">30 FPS</option>
+                    <option value="60">60 FPS</option>
+                    <option value="120">120 FPS</option>
+                </select>
+                <p style="font-size: 11px; color: #94a3b8; margin-bottom: 0;">Defaults to 60 on desktop and 30 on mobile. Performance Mode caps this at 30. Actual FPS depends on your device; simulation speed is unchanged.</p>
+            </div>
+
+            <div class="instrument-setting">
+                <label for="trainSoundProfileSelect">Train Sounds &amp; Horn</label>
+                <div style="display: flex; gap: 8px;">
+                    <select id="trainSoundProfileSelect" onchange="setTrainSoundProfile(this.value)" style="flex: 1;">
+                        <option value="electric">Electric loco WAP-7 + LHB coaches (default)</option>
+                        <option value="metro">Metro EMU (VVVF inverter, welded slab track)</option>
+                        <option value="diesel">Diesel ALCO WDM-3A + ICF coaches (jointed track)</option>
+                    </select>
+                    <button type="button" onclick="previewTrainHorn()" style="padding: 6px 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.5); color: #10b981; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600;">Test horn</button>
+                </div>
+                <p>Traction, track rhythm, station-yard turnouts, bridges, curve squeal, brakes, doors and horn. Real bridges and turnouts come from OpenStreetMap when available. Game sounds mix with background music instead of pausing it.</p>
+            </div>
+
+            <div class="instrument-setting">
+                <label>Route Storage</label>
+                <div id="routeStorageStatus" style="font-size: 12px; color: #cbd5e1;">Loading routes…</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <button type="button" id="routeFolderBtn" onclick="connectRoutesFolder()" style="padding: 6px 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.5); color: #10b981; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600;">Choose Downloads/routes</button>
+                    <button type="button" onclick="syncRoutesNow()" style="padding: 6px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(71, 85, 105, 0.6); color: #cbd5e1; border-radius: 8px; cursor: pointer; font-size: 12px;">Refresh folder</button>
+                    <button type="button" onclick="exportRoutesFile()" style="padding: 6px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(71, 85, 105, 0.6); color: #cbd5e1; border-radius: 8px; cursor: pointer; font-size: 12px;">Download routes.json</button>
+                    <button type="button" onclick="importRoutesFile()" style="padding: 6px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(71, 85, 105, 0.6); color: #cbd5e1; border-radius: 8px; cursor: pointer; font-size: 12px;">Import</button>
+                </div>
+                <p id="routeStorageHint">Routes are saved on this device and can optionally be mirrored to a local routes.json file.</p>
+            </div>
+
+            <div id="careerSettingsSection" style="display: none; margin-bottom: 20px; padding-top: 4px; border-top: 1px solid rgba(71,85,105,0.35);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="display: block; font-size: 13px; font-weight: 600; color: #e2e8f0;">🎮 Career Settings</label>
+                    <button id="careerSettingsToggleBtn" onclick="toggleCareerSettingsSection()" style="padding: 6px 10px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(71, 85, 105, 0.6); color: #cbd5e1; border-radius: 7px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s ease;">Show Section ▾</button>
+                </div>
+
+                <div id="careerSettingsBody" style="display: none;">
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <button id="careerCurrINR" onclick="setCareerCurrency('INR')" style="flex: 1; padding: 10px; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #10b981; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s ease;">
+                            ₹ INR
+                        </button>
+                        <button id="careerCurrUSD" onclick="setCareerCurrency('USD')" style="flex: 1; padding: 10px; background: rgba(51, 65, 85, 0.5); border: 1px solid rgba(71, 85, 105, 0.5); color: #94a3b8; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s ease;">
+                            $ USD
+                        </button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px;">
+                        <label for="careerFareRate" style="font-size: 12px; color: #cbd5e1;">Ticket Fare Per Km</label>
+                        <input id="careerFareRate" type="number" min="0.1" step="0.1" value="1" onchange="setCareerFareRate(this.value)" style="width: 95px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(71,85,105,0.7); background: rgba(15,23,42,0.8); color: #e2e8f0; font-size: 12px;">
+
+                        <label for="careerBaseCost" style="font-size: 12px; color: #cbd5e1;">Base Running Cost / Km</label>
+                        <input id="careerBaseCost" type="number" min="1" step="1" value="100" onchange="setCareerBaseCost(this.value)" style="width: 95px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(71,85,105,0.7); background: rgba(15,23,42,0.8); color: #e2e8f0; font-size: 12px;">
+
+                        <label for="careerCoachCost" style="font-size: 12px; color: #cbd5e1;">Extra Coach Cost / Km</label>
+                        <input id="careerCoachCost" type="number" min="0" step="1" value="50" onchange="setCareerCoachCost(this.value)" style="width: 95px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(71,85,105,0.7); background: rgba(15,23,42,0.8); color: #e2e8f0; font-size: 12px;">
+                    </div>
+                    <div style="margin-bottom: 10px; padding: 10px 12px; background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(71,85,105,0.5); border-radius: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label for="careerPassengerTraffic" style="font-size: 12px; color: #cbd5e1; font-weight: 600;">Passenger Traffic</label>
+                            <span id="careerPassengerTrafficValue" style="font-size: 12px; color: #10b981; font-weight: 700;">1.0x</span>
+                        </div>
+                        <input id="careerPassengerTraffic" type="range" min="0.1" max="5" step="0.1" value="1" oninput="setCareerPassengerTraffic(this.value)" style="width: 100%; accent-color: #10b981; cursor: pointer;">
+                        <div style="font-size: 11px; color: #64748b; margin-top: 6px;">Controls how many passengers spawn at stations in career mode.</div>
+                    </div>
+                    <div class="career-toggle-list">
+                        <label class="career-toggle" for="careerAutoDoorsToggle">
+                            <span><strong>Auto close doors</strong><small>Close doors and depart once boarding finishes (station dwell time).</small></span>
+                            <input id="careerAutoDoorsToggle" type="checkbox" onchange="setCareerAutoDoors(this.checked)">
+                        </label>
+                        <label class="career-toggle" for="careerAutoCoachesToggle">
+                            <span><strong>Auto add/remove coaches</strong><small>Resize the rake at each stop to fit passenger demand and avoid losses.</small></span>
+                            <input id="careerAutoCoachesToggle" type="checkbox" onchange="setCareerAutoCoaches(this.checked)">
+                        </label>
+                        <label class="career-toggle" for="careerAutoStartCoachesToggle">
+                            <span><strong>Auto starting coaches</strong><small>Pick the starting coach count from expected traffic on the route.</small></span>
+                            <input id="careerAutoStartCoachesToggle" type="checkbox" onchange="setCareerAutoStartCoaches(this.checked)">
+                        </label>
+                    </div>
+                    <div id="careerHighScoresList" style="font-size: 11px; color: #94a3b8; margin-bottom: 6px; max-height: 100px; overflow-y: auto;"></div>
+                    <button onclick="clearCareerHighScores()" style="width: 100%; padding: 7px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; border-radius: 6px; cursor: pointer; font-size: 11px; transition: all 0.2s ease;">
+                        🗑️ Clear High Scores
+                    </button>
+                </div>
+            </div>
+
+            <!-- Performance Mode Toggle -->
+            <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(71,85,105,0.5); border-radius: 10px;">
+                <div>
+                    <div style="font-size: 12px; font-weight: 600; color: #cbd5e1;">&#x26A1; Performance Mode</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Reduce HUD effects and cap auto simulation to ~30 fps</div>
+                </div>
+                <label style="display: flex; align-items: center; cursor: pointer; gap: 6px;">
+                    <input id="performanceModeToggle" type="checkbox" onchange="setPerformanceMode(this.checked)" style="width: 16px; height: 16px; accent-color: #10b981; cursor: pointer;">
+                    <span style="font-size: 11px; color: #94a3b8;">ON</span>
+                </label>
+            </div>
+
+            <!-- Reset to Default Button -->
+            <button onclick="resetVehicleSize()" style="width: 100%; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; border-radius: 10px; padding: 10px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s ease; margin-bottom: 12px;"
+                onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'"
+                onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
+                🔄 Reset to Default
+            </button>
+
+            <!-- Close Button -->
+            <button onclick="closeSettingsDialog()" style="width: 100%; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 10px; padding: 12px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s ease; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);"
+                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.4)'"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(16, 185, 129, 0.3)'">
+                ✅ Close
+            </button>
+        </div>
+
+        <!-- Creative Collapsible Theme Control Panel -->
+        <div id="themeControlPanel" inert aria-hidden="true" aria-label="Map and interface themes"
+            style="position: fixed; top: 15px; right: -320px; background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(15px); border-radius: 15px 0 0 15px; padding: 20px; width: 300px; border: 1px solid rgba(148, 163, 184, 0.2); box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4); z-index: 500; transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1); max-height: 90vh; overflow-y: auto;">
+            <div class="theme-panel-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(148, 163, 184, 0.2); padding-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 16px; color: #f1f5f9; display: flex; align-items: center; gap: 8px;">🎨
+                    Theme Control</h3>
+                <button onclick="toggleThemePanel()" aria-label="Close themes"
+                    style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;"
+                    onmouseover="this.style.background='rgba(239, 68, 68, 0.4)'"
+                    onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'">×</button>
+            </div>
+
+            <div class="theme-controls-vertical" style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- Map Theme Control -->
+                <div class="theme-control-section"
+                    style="background: rgba(51, 65, 85, 0.4); border-radius: 10px; padding: 15px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                    <div class="section-header"
+                        style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="font-size: 14px;">🗺️</span>
+                        <h4 style="margin: 0; font-size: 13px; color: #cbd5e1; font-weight: 600;">Map Theme</h4>
+                    </div>
+                    <select id="mapThemeSelect" onchange="changeMapTheme(this.value)"
+                        style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #475569; background: rgba(15, 23, 42, 0.8); color: #f1f5f9; font-size: 12px; cursor: pointer;">
+                        <option value="osm">🌍 OpenStreetMap</option>
+                        <option value="cyclosm">🚴 CyclOSM</option>
+                        <option value="cyclemap">🚲 Cycle Map</option>
+                        <option value="transportmap">🚌 Transport Map</option>
+                        <option value="opnvkarte">🚊 ÖPNVKarte</option>
+                        <option value="humanitarian">🆘 Humanitarian</option>
+                        <option value="satellite">🛰️ Google Satellite</option>
+                        <option value="esri_satellite">🛰️ Esri Satellite</option>
+                        <option value="darkmatter">🌑 Dark Matter</option>
+                        <option value="positron">⚪ Positron</option>
+                        <option value="midnight">🌌 Midnight Commander</option>
+                        <option value="apple_standard">🗺️ Streets</option>
+                        <option value="apple_muted">⛰️ Topographic</option>
+                        <option value="apple_hybrid">🔄 Hybrid</option>
+                    </select>
+                </div>
+
+                <!-- UI Theme Control -->
+                <div class="theme-control-section"
+                    style="background: rgba(51, 65, 85, 0.4); border-radius: 10px; padding: 15px; border: 1px solid rgba(148, 163, 184, 0.1);">
+                    <div class="section-header"
+                        style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <span style="font-size: 14px;">🎭</span>
+                        <h4 style="margin: 0; font-size: 13px; color: #cbd5e1; font-weight: 600;">UI Theme</h4>
+                    </div>
+                    <select id="mainThemeSelect" onchange="switchMainTheme(this.value)"
+                        style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #475569; background: rgba(15, 23, 42, 0.8); color: #f1f5f9; font-size: 12px; cursor: pointer;">
+                        <option value="">🎨 Default (Cyber Blue)</option>
+                        <option value="desert">🏜️ Desert</option>
+                        <option value="tropical">🌴 Tropical</option>
+                        <option value="arctic">🧊 Arctic</option>
+                        <option value="dark-night">🌙 Dark Night</option>
+                        <option value="sunshine">☀️ Sunshine</option>
+                        <option value="cyberpunk">🌆 Cyberpunk</option>
+                        <option value="ocean">🌊 Ocean Deep</option>
+                        <option value="sunset">🌅 Sunset Vibes</option>
+                        <option value="forest">🌲 Forest</option>
+                        <option value="lavender">💜 Lavender Dreams</option>
+                        <option value="rose-gold">🌹 Rose Gold</option>
+                    </select>
+                </div>
+
+                <!-- HUD Customization Control -->
+                <div class="theme-control-mini"
+                    style="background: rgba(51, 65, 85, 0.5); border-radius: 8px; padding: 10px; display: flex; gap: 8px;">
+                    <button id="hudCustomizeBtn" onclick="showHUDCustomizeDialog()"
+                        style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: linear-gradient(135deg, #10b981, #059669); color: white; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.3s ease;"
+                        onmouseover="this.style.background='linear-gradient(135deg, #059669, #047857)'"
+                        onmouseout="this.style.background='linear-gradient(135deg, #10b981, #059669)'">
+                        <span>🎯</span>
+                        <span>Customize HUD</span>
+                    </button>
+                    <button id="fullscreenBtn" onclick="toggleFullscreenMode()"
+                        style="flex: 1; padding: 8px; border: none; border-radius: 6px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.3s ease;"
+                        onmouseover="this.style.background='linear-gradient(135deg, #1d4ed8, #1e40af)'"
+                        onmouseout="this.style.background='linear-gradient(135deg, #3b82f6, #1d4ed8)'">
+                        <span>🖥️</span>
+                        <span>Fullscreen</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="map">
+            <div id="world3dContainer" aria-label="3D simulation view" style="display:none;"></div>
+            <div id="world3dControls" class="world3d-controls" style="display:none;" aria-label="3D camera controls">
+                <div class="world3d-camera-buttons" role="group" aria-label="Camera view">
+                    <button id="world3dChase" type="button" aria-pressed="true">Chase</button>
+                    <button id="world3dCab" type="button" aria-pressed="false">Cab</button>
+                    <button id="world3dFree" type="button" aria-pressed="false" title="Drag to orbit the train">Orbit</button>
+                    <button id="world3dZoomIn" type="button" aria-label="Zoom in">+</button>
+                    <button id="world3dZoomOut" type="button" aria-label="Zoom out">−</button>
+                    <button id="world3dData" type="button" title="Replace automatically loaded route imagery and scenery with a local OSM-derived GeoJSON extract">Scenery</button>
+                    <button id="world3dScreens" type="button" aria-pressed="true" title="Hide or show the cab DMI and GPS displays" hidden>Screens</button>
+                    <button id="world3dAssist" type="button" aria-pressed="false" title="Show accessible cab controls" hidden>Controls</button>
+                    <button id="world3dBack" type="button">2D</button>
+                </div>
+                <span id="world3dStatus" role="status" hidden></span>
+                <span id="world3dWeather" role="status" hidden></span>
+                <input id="world3dDataFile" type="file" accept=".geojson,.json,application/geo+json,application/json" hidden>
+                <a id="world3dAttribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="display:none;">© OpenStreetMap contributors</a>
+            </div>
+            <!-- Weather Effects Container -->
+            <div id="weatherEffectsContainer"></div>
+
+            <!-- Right-click driving style context menu (road/car only) -->
+            <div id="drivingStyleContextMenu" class="driving-ctx-menu" style="display:none;">
+                <div class="driving-ctx-title">🎯 Driving Style</div>
+                <button class="driving-ctx-item" data-style="smooth">🌊 Smooth <span class="ctx-sub">−12%</span></button>
+                <button class="driving-ctx-item" data-style="normal">🚗 Normal <span class="ctx-sub">at target</span></button>
+                <button class="driving-ctx-item" data-style="rushed">💨 Rushed <span class="ctx-sub">sharper turns</span></button>
+            </div>
+
+            <!-- Planned segment peak speed HUD -->
+            <div id="speedLimitSign" role="img" title="No segment peak speed available." aria-label="No segment peak speed available" style="
+                position: absolute;
+                bottom: 24px;
+                right: 24px;
+                z-index: 200;
+                width: 72px;
+                height: 72px;
+                border-radius: 50%;
+                background: rgba(8, 10, 22, 0.88);
+                backdrop-filter: blur(12px) saturate(1.4);
+                border: 4px solid #64748b;
+                box-shadow: 0 0 0 2px rgba(100,116,139,0.35), 0 8px 28px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                user-select: none;
+                transition: opacity 0.4s ease;
+                opacity: 0;
+            ">
+                <div style="font-size: 8px; font-weight: 700; letter-spacing: 0.12em; color: rgba(255,255,255,0.45); text-transform: uppercase; line-height: 1;">EST PEAK</div>
+                <div class="sign-number" style="font-size: 22px; font-weight: 900; color: #f8fafc; line-height: 1.1; font-family: 'Inter','Segoe UI',sans-serif; letter-spacing:-0.02em;">—</div>
+                <div style="font-size: 7px; font-weight: 600; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); margin-top: 1px;" id="speedLimitUnit">km/h</div>
+            </div>
+
+            <!-- Futuristic HUD Dashboard - Constrained to map area -->
+            <div id="hudContainer" class="hud-theme-default" style="z-index: 100;">
+                <!-- Speed Display - Large digital counter with acceleration lines -->
+                <div class="hud-panel speed-panel" data-speedometer-mode="digital">
+                    <div class="instrument-label">VELOCITY</div>
+                    <svg id="analogSpeedometer" class="analog-speedometer" viewBox="0 0 200 200" role="img" aria-label="Speedometer">
+                        <defs>
+                            <linearGradient id="dialBezel" x1="0" y1="0" x2="0.3" y2="1">
+                                <stop offset="0" stop-color="#eef4fa" /><stop offset="0.28" stop-color="#7d8ea1" />
+                                <stop offset="0.55" stop-color="#1c2531" /><stop offset="0.8" stop-color="#5d6d80" />
+                                <stop offset="1" stop-color="#c9d5e2" />
+                            </linearGradient>
+                            <radialGradient id="dialFace" cx="0.5" cy="0.4" r="0.65">
+                                <stop offset="0" stop-color="#1d2c3e" /><stop offset="0.7" stop-color="#0a121d" />
+                                <stop offset="1" stop-color="#03070c" />
+                            </radialGradient>
+                            <linearGradient id="dialSweepGradient" gradientUnits="userSpaceOnUse" x1="20" y1="150" x2="180" y2="150">
+                                <stop offset="0" stop-color="#2fc8ff" /><stop offset="0.5" stop-color="#3ef0a1" />
+                                <stop offset="0.8" stop-color="#ffc443" /><stop offset="1" stop-color="#ff4b4b" />
+                            </linearGradient>
+                            <linearGradient id="dialNeedleGradient" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0" stop-color="#b3121f" /><stop offset="0.5" stop-color="#ff5a4f" />
+                                <stop offset="1" stop-color="#9e0f1a" />
+                            </linearGradient>
+                            <radialGradient id="dialCap" cx="0.35" cy="0.3" r="0.8">
+                                <stop offset="0" stop-color="#f5f9fc" /><stop offset="0.45" stop-color="#8495a8" />
+                                <stop offset="1" stop-color="#1b2430" />
+                            </radialGradient>
+                            <linearGradient id="dialGlass" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0" stop-color="#fff" stop-opacity="0.2" /><stop offset="1" stop-color="#fff" stop-opacity="0" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="100" cy="100" r="99" fill="url(#dialBezel)" />
+                        <circle cx="100" cy="100" r="94" fill="#04080d" />
+                        <circle cx="100" cy="100" r="92" fill="url(#dialFace)" />
+                        <path class="dial-track" d="M40.60 159.40 A84 84 0 1 1 159.40 159.40" />
+                        <path id="speedometerRedline" class="dial-redline" d="" />
+                        <path id="speedometerSweep" class="dial-sweep" d="M40.60 159.40 A84 84 0 1 1 159.40 159.40"
+                            pathLength="1000" stroke-dasharray="1000" stroke-dashoffset="1000" />
+                        <g id="speedometerTicks"></g>
+                        <path id="speedometerLimitMarker" class="dial-limit" d="M96 5 L104 5 L100 13 Z" style="display: none" />
+                        <text id="speedometerMultiplier" class="dial-multiplier" x="100" y="66"></text>
+                        <text id="analogSpeedUnit" class="dial-unit" x="100" y="78">km/h</text>
+                        <g class="dial-trip">
+                            <rect class="dial-lcd" x="66" y="132" width="68" height="20" rx="4" />
+                            <text id="speedometerOdometer" class="dial-odometer" x="100" y="146.5">0.0 km</text>
+                            <text class="dial-brand" x="100" y="166">TRIP</text>
+                        </g>
+                        <g class="dial-digital">
+                            <text id="dialDigitalSpeed" class="dial-digital-value" x="100" y="141">0</text>
+                        </g>
+                        <g id="speedometerNeedle" transform="rotate(-135 100 100)">
+                            <path class="dial-needle" d="M100 17 L102.4 100 L104.5 118 L95.5 118 L97.6 100 Z" />
+                        </g>
+                        <circle class="dial-cap" cx="100" cy="100" r="10" />
+                        <circle class="dial-cap-core" cx="100" cy="100" r="3.5" />
+                        <path class="dial-glass" d="M24 92 A77 77 0 0 1 176 92 Q100 70 24 92 Z" />
+                    </svg>
+                    <div class="speed-display">
+                        <div class="speed-value" id="liveSpeed">0</div>
+                        <div class="speed-unit" id="speedUnitLabel">km/h</div>
+                        <div class="speed-lines">
+                            <div class="line line-1"></div>
+                            <div class="line line-2"></div>
+                            <div class="line line-3"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- G-Force meter: friction-circle dot (accel up, braking down, curves sideways) + comfort-limit bar -->
+                <div class="hud-panel gforce-panel" data-g-level="safe" data-g-phase="idle">
+                    <svg class="gmeter" viewBox="-32 -32 64 64" aria-hidden="true">
+                        <circle class="gmeter-face" r="31" />
+                        <circle class="gmeter-ring" r="27" />
+                        <circle class="gmeter-ring" r="13.5" />
+                        <circle class="gmeter-ring faint" r="8.54" />
+                        <line class="gmeter-axis" x1="0" y1="-29" x2="0" y2="29" />
+                        <line class="gmeter-axis" x1="-29" y1="0" x2="29" y2="0" />
+                        <text class="gmeter-tag" x="0" y="-21.5">ACC</text>
+                        <text class="gmeter-tag" x="0" y="24.5">BRK</text>
+                        <circle id="gforceLimitRing" class="gmeter-limit" r="8.54" />
+                        <g id="gforceDot" class="gmeter-dot-group">
+                            <circle class="gmeter-dot-glow" r="7" />
+                            <circle class="gmeter-dot" r="3.6" />
+                        </g>
+                    </svg>
+                    <div class="gmeter-readout">
+                        <div class="gforce-label">G-FORCE</div>
+                        <div class="gmeter-value"><span class="gforce-value" id="gForceDisplay">0.00</span><span class="gmeter-unit">g</span></div>
+                        <div class="gmeter-phase" id="gforcePhase">Idle</div>
+                        <div class="gmeter-comfort" title="Share of the comfort G-force limit">
+                            <div class="gforce-fill" id="gforceBar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Destination & Progress - Circular Timer Design -->
+                <div class="hud-panel waypoint-panel">
+                    <div class="waypoint-timer">
+                        <div class="timer-ring">
+                            <svg class="timer-svg" viewBox="0 0 100 100">
+                                <!-- Background circle -->
+                                <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(0, 255, 136, 0.2)"
+                                    stroke-width="3" />
+                                <!-- Progress circle -->
+                                <circle cx="50" cy="50" r="40" fill="none" stroke="#00ff88" stroke-width="3"
+                                    stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="251.2"
+                                    id="waypointProgressCircle" class="timer-progress" />
+                                <!-- Distance markers -->
+                                <g class="distance-markers">
+                                    <circle cx="50" cy="10" r="1" fill="#00ff88" opacity="0.6" />
+                                    <circle cx="90" cy="50" r="1" fill="#00ff88" opacity="0.6" />
+                                    <circle cx="50" cy="90" r="1" fill="#00ff88" opacity="0.6" />
+                                    <circle cx="10" cy="50" r="1" fill="#00ff88" opacity="0.6" />
+                                </g>
+                            </svg>
+                            <div class="timer-center">
+                                <div class="waypoint-distance" id="nextWaypointDistance">- km</div>
+                                <div class="waypoint-label">DESTINATION</div>
+                                <div class="timer-eta" id="waypointETA">--:--</div>
+                            </div>
+                            <!-- Digital progress indicator -->
+                            <div class="timer-progress-text" id="waypointProgress">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vehicle Condition - Wireframe outline -->
+                <div class="hud-panel vehicle-panel">
+                    <div class="vehicle-label">VEHICLE STATUS</div>
+                    <div class="vehicle-wireframe">
+                        <svg viewBox="0 0 100 40" class="vehicle-svg">
+                            <rect x="15" y="15" width="70" height="20" fill="none" stroke="#00ff88" stroke-width="1.5"
+                                class="vehicle-body" />
+                            <circle cx="25" cy="35" r="5" fill="none" stroke="#00ff88" stroke-width="1.5"
+                                class="vehicle-wheel" />
+                            <circle cx="75" cy="35" r="5" fill="none" stroke="#00ff88" stroke-width="1.5"
+                                class="vehicle-wheel" />
+                            <rect x="20" y="10" width="15" height="8" fill="none" stroke="#00ff88" stroke-width="1"
+                                class="vehicle-window" />
+                            <rect x="65" y="10" width="15" height="8" fill="none" stroke="#00ff88" stroke-width="1"
+                                class="vehicle-window" />
+                        </svg>
+                        <div class="vehicle-condition" id="vehicleCondition">100%</div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Location Display -->
+                <div class="hud-panel location-panel">
+                    <div class="location-display">
+                        <div class="location-coordinates" id="currentLocation">
+                            ---.---- , ---.----
+                            <span class="location-status" id="locationStatus"></span>
+                        </div>
+                        <div class="location-landmark marquee-container" id="nextstop">Current Location</div>
+                        <div class="next-stop-info">
+                            <div class="info-row">
+                                <span class="info-label">Distance</span>
+                                <span class="info-value" id="nextStopDistance">0 km</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">ETA</span>
+                                <span class="info-value" id="nextStopTime">0:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fuel Efficiency Control - Compact HUD Toggle -->
+                <div class="hud-panel fuel-efficiency-panel" style="width: 120px; height: 80px;">
+                    <div class="fuel-efficiency-label" style="font-size: 9px; margin-bottom: 8px; color: #94a3b8;">
+                        EFFICIENCY</div>
+                    <div class="fuel-efficiency-control"
+                        style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                        <label style="position: relative; display: inline-block; width: 40px; height: 20px;">
+                            <input type="checkbox" id="hudFuelEfficiencyToggle"
+                                aria-label="Fuel efficiency mode"
+                                onchange="toggleFuelEfficiency(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                            <span
+                                style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, #374151, #4b5563); border-radius: 20px; transition: all 0.3s ease; border: 1px solid rgba(148, 163, 184, 0.3); box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);"
+                                id="hudFuelEfficiencySlider"></span>
+                        </label>
+                        <div class="fuel-mode-indicator" id="fuelModeIndicator"
+                            style="font-size: 10px; font-weight: bold; color: #ef4444;">STANDARD</div>
+                        <div class="fuel-savings" id="fuelSavings" style="font-size: 8px; color: #94a3b8;">0% saved
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time and Distance Info Panel -->
+                <div class="hud-panel info-panel">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">DURATION</div>
+                            <div class="info-value" id="duration">00:00:00</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">DISTANCE</div>
+                            <div class="info-value" id="distanceCovered">0 km</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">NEXT STOP</div>
+                            <div class="info-value" id="hudNextStopDistance">0 km</div>
+                        </div>
+                        <!-- Flight-monitor style rotating display -->
+                        <div class="info-item flight-monitor-item">
+                            <div class="flight-monitor-rotator">
+                                <div class="flight-monitor-slide active" data-slide="arrival">
+                                    <div class="info-label">EST. ARRIVAL</div>
+                                    <div class="info-value" id="flightMonitorArrival">--:--</div>
+                                </div>
+                                <div class="flight-monitor-slide" data-slide="departure">
+                                    <div class="info-label">DEPARTED</div>
+                                    <div class="info-value" id="flightMonitorDeparture">--:--</div>
+                                </div>
+                                <div class="flight-monitor-slide" data-slide="localtime">
+                                    <div class="info-label">LOCAL TIME</div>
+                                    <div class="info-value" id="flightMonitorLocalTime">--:--</div>
+                                </div>
+                                <div class="flight-monitor-slide" data-slide="date">
+                                    <div class="info-label">DATE</div>
+                                    <div class="info-value" id="flightMonitorDate">--</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">JOURNEY</div>
+                            <div class="info-value" id="journeyProgress" style="color:#00ff88;">0.0%</div>
+                        </div>
+                        <div class="info-item" title="OpenLayers map render events per second; actual display FPS depends on hardware.">
+                            <div class="info-label">RENDER FPS</div>
+                            <div class="info-value" id="renderFps">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weather Info Panel - Enhanced Visual Design with Weather Backgrounds -->
+                <div class="hud-panel weather-panel">
+                    <div class="weather-card-container">
+                        <div class="weather-card" id="weatherCard">
+                            <!-- Current Location Side -->
+                            <div class="weather-side current-side">
+                                <!-- Top 30% - Weather Visualization Background -->
+                                <div class="weather-visualization" id="currentWeatherVisualization">
+                                    <div class="weather-scene" id="currentWeatherScene"></div>
+                                </div>
+
+                                <!-- Bottom 70% - Weather Data -->
+                                <div class="weather-content">
+                                    <div class="weather-header">
+                                        <div class="location-name" id="currentWeatherLocation">Current</div>
+                                        <div class="temperature" id="currentTemperature">--°C</div>
+                                    </div>
+                                    <div class="weather-details-grid">
+                                        <div class="weather-row">
+                                            <span class="weather-condition"
+                                                id="currentWeatherCondition">Loading...</span>
+                                        </div>
+                                        <div class="weather-row">
+                                            <span class="humidity" id="currentHumidity">--%</span>
+                                            <span class="wind-speed" id="currentWindSpeed">-- km/h</span>
+                                            <span class="rain-chance" id="currentRainChance">--%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Next Location Side -->
+                            <div class="weather-side next-side">
+                                <!-- Top 30% - Weather Visualization Background -->
+                                <div class="weather-visualization" id="nextWeatherVisualization">
+                                    <div class="weather-scene" id="nextWeatherScene"></div>
+                                </div>
+
+                                <!-- Bottom 70% - Weather Data -->
+                                <div class="weather-content">
+                                    <div class="weather-header">
+                                        <div class="location-name" id="nextWeatherLocation">Next Stop</div>
+                                        <div class="temperature" id="nextTemperature">--°C</div>
+                                    </div>
+                                    <div class="weather-details-grid">
+                                        <div class="weather-row">
+                                            <span class="weather-condition" id="nextWeatherCondition">Loading...</span>
+                                        </div>
+                                        <div class="weather-row">
+                                            <span class="humidity" id="nextHumidity">--%</span>
+                                            <span class="wind-speed" id="nextWindSpeed">-- km/h</span>
+                                            <span class="rain-chance" id="nextRainChance">--%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="weather-indicator">
+                            <span class="indicator-dot active" id="currentDot"></span>
+                            <span class="indicator-dot" id="nextDot"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Career Economy Panel (hidden by default, shown in Career mode) -->
+                <div class="hud-panel economy-panel" id="economyPanel" style="display: none;">
+                    <!-- Always-visible topbar: label + balance + action buttons -->
+                    <div class="economy-topbar">
+                        <span class="economy-title">💰 CAREER</span>
+                        <span class="economy-balance" id="economyBalance">₹9,000</span>
+                        <div class="economy-topbar-btns">
+                            <button class="economy-currency-btn" id="currencyToggleBtn" onclick="window.toggleCareerCurrency && window.toggleCareerCurrency()" title="Switch currency">₹</button>
+                            <button class="economy-minimize-btn" id="economyMinimizeBtn" onclick="window.toggleEconomyPanelCollapsed && window.toggleEconomyPanelCollapsed()" title="Toggle details">▾</button>
+                        </div>
+                    </div>
+                    <!-- Collapsible body with stats grid -->
+                    <div class="economy-body" id="economyStats">
+                        <div class="economy-divider"></div>
+                        <div class="economy-grid">
+                            <div class="economy-cell">
+                                <div class="economy-cell-val economy-green" id="economyRevenue">₹0</div>
+                                <div class="economy-cell-lbl">Revenue</div>
+                            </div>
+                            <div class="economy-cell">
+                                <div class="economy-cell-val economy-red" id="economyCosts">₹0</div>
+                                <div class="economy-cell-lbl">Costs</div>
+                            </div>
+                            <div class="economy-cell">
+                                <div class="economy-cell-val" id="economyNetProfit">₹0</div>
+                                <div class="economy-cell-lbl">Net P&amp;L</div>
+                            </div>
+                            <div class="economy-cell">
+                                <div class="economy-cell-val" id="economyPax">0</div>
+                                <div class="economy-cell-lbl">Pax</div>
+                            </div>
+                            <div class="economy-cell">
+                                <div class="economy-cell-val" id="economyCoaches">1</div>
+                                <div class="economy-cell-lbl">Coaches</div>
+                            </div>
+                            <div class="economy-cell">
+                                <div class="economy-cell-val" id="economySmoothness">100%</div>
+                                <div class="economy-cell-lbl">Comfort</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Career Game Over Overlay -->
+    <div id="careerGameOverOverlay" class="career-game-over" style="display: none;">
+        <div class="career-game-over-content">
+            <div class="career-game-over-icon">💸</div>
+            <h2 class="career-game-over-title">Out of Funds!</h2>
+            <p class="career-game-over-subtitle">Your train has lost power. Coasting to a halt...</p>
+            <div class="career-game-over-stats">
+                <div class="career-stat">
+                    <span class="career-stat-label">Distance</span>
+                    <span class="career-stat-value" id="goDistance">0 km</span>
+                </div>
+                <div class="career-stat">
+                    <span class="career-stat-label">Passengers</span>
+                    <span class="career-stat-value" id="goPassengers">0</span>
+                </div>
+                <div class="career-stat">
+                    <span class="career-stat-label">Revenue</span>
+                    <span class="career-stat-value" id="goRevenue">₹0</span>
+                </div>
+                <div class="career-stat">
+                    <span class="career-stat-label">Costs</span>
+                    <span class="career-stat-value" id="goCosts">₹0</span>
+                </div>
+            </div>
+            <button class="career-restart-btn" onclick="window.restartCareer && window.restartCareer()">🔄 Restart</button>
+        </div>
+    </div>
+
+    <!-- Time Chart Dialog -->
+    <div id="timeChartDialog" class="time-chart-dialog" style="display:none;">
+        <div class="time-chart-content">
+            <div class="time-chart-header">
+                <h3>🕐 Route Timetable</h3>
+                <button class="dialog-close" onclick="hideTimeChart()">×</button>
+            </div>
+            <div class="time-chart-body">
+                <table class="time-chart-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Station / Waypoint</th>
+                            <th>Type</th>
+                            <th>Arrival</th>
+                            <th>Departure</th>
+                            <th>Travel</th>
+                            <th>Distance Interval</th>
+                            <th>Distance from Start</th>
+                            <th id="peakSpeedHeader">Peak km/h</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timeChartBody">
+                        <tr><td colspan="10" style="text-align:center;opacity:0.5;">No route loaded</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <audio id="StopAmbience">
+        <source src="assets/audio/station_ambience.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
+
+    <audio id="DoorAction">
+        <source src="assets/audio/door_sound.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
+
+    <audio id="Departaudio">
+        <source src="assets/audio/Train_departure.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
+
+    <audio id="TrainRunningSound" loop>
+        <source src="assets/audio/Train_running.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
+    <audio id="TrainStop">
+        <source src="assets/audio/Train_stop.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script type="module" src="./js/main.js"></script>
+
+    <!-- OPTIMIZED: Performance Metrics Dashboard -->
+    <div id="performanceMetrics"
+        style="position: fixed; bottom: calc(60px + env(safe-area-inset-bottom)); right: calc(10px + env(safe-area-inset-right)); background: rgba(0, 0, 0, 0.85); color: #fff; padding: 12px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 11px; z-index: 2000; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); display: none; min-width: 220px;">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); padding-bottom: 5px;">
+            <strong style="color: #10b981;">⚡ Performance</strong>
+            <button onclick="togglePerfMetrics()"
+                style="background: none; border: none; color: #fff; cursor: pointer; font-size: 14px; padding: 0; line-height: 1;">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; font-size: 10px;">
+            <span style="color: #94a3b8;">Map renders/s:</span>
+            <span id="fpsCounter" style="color: #22c55e; font-weight: bold;">—</span>
+
+            <span style="color: #94a3b8;">API Calls:</span>
+            <span id="apiCounter" style="color: #3b82f6;">0</span>
+
+            <span style="color: #94a3b8;">Cache Hit:</span>
+            <span id="cacheHitRate" style="color: #f59e0b;">0%</span>
+
+            <span style="color: #94a3b8;">Memory:</span>
+            <span id="memoryUsage" style="color: #8b5cf6;">0 MB</span>
+
+            <span style="color: #94a3b8;">DOM Cache:</span>
+            <span id="domCacheSize" style="color: #06b6d4;">0</span>
+        </div>
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+            <div style="font-size: 9px; color: #64748b;">Last Weather: <span id="lastWeatherFetch"
+                    style="color: #94a3b8;">N/A</span></div>
+            <div style="font-size: 9px; color: #64748b;">Last Geocode: <span id="lastGeocodeFetch"
+                    style="color: #94a3b8;">N/A</span></div>
+        </div>
+    </div>
+
+    <!-- Performance Monitoring (only runs while the panel is open) -->
+    <script>
+        (function () {
+            let statsTimer = 0;
+            const ago = (t) => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? s + 's ago' : Math.round(s / 60) + 'm ago'; };
+
+            function lastSuccess(log, type) {
+                for (let i = log.length - 1; i >= 0; i--) {
+                    if (log[i].type === type && !log[i].cached) return log[i].timestamp;
+                }
+                return 0;
+            }
+
+            function updateStats() {
+                const fps = window.state?.renderFPS;
+                document.getElementById('fpsCounter').textContent = fps == null ? '—' : String(fps);
+                const mon = window.APIMonitor;
+                if (mon) {
+                    const stats = mon.getStats();
+                    const apiCounter = document.getElementById('apiCounter');
+                    const cacheHit = document.getElementById('cacheHitRate');
+                    if (apiCounter) apiCounter.textContent = stats.total;
+                    if (cacheHit) cacheHit.textContent = stats.hitRate + '%';
+                    const log = mon.requests || [];
+                    const w = lastSuccess(log, 'weather'), g = lastSuccess(log, 'geocode');
+                    const wEl = document.getElementById('lastWeatherFetch'), gEl = document.getElementById('lastGeocodeFetch');
+                    if (wEl && w) wEl.textContent = ago(w);
+                    if (gEl && g) gEl.textContent = ago(g);
+                }
+                const memElement = document.getElementById('memoryUsage');
+                if (memElement && performance.memory) {
+                    const memoryMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                    memElement.textContent = memoryMB + ' MB';
+                    memElement.style.color = memoryMB < 50 ? '#8b5cf6' : memoryMB < 80 ? '#f59e0b' : '#ef4444';
+                } else if (memElement) {
+                    memElement.textContent = 'n/a';
+                }
+                const domSizeEl = document.getElementById('domCacheSize');
+                if (domSizeEl && window.domCache) {
+                    domSizeEl.textContent = Object.values(window.domCache).filter(v => v != null && typeof v !== 'function').length;
+                }
+            }
+
+            window.togglePerfMetrics = function () {
+                const panel = document.getElementById('performanceMetrics');
+                const show = panel.style.display === 'none';
+                panel.style.display = show ? 'block' : 'none';
+                clearInterval(statsTimer);
+                if (show) {
+                    updateStats();
+                    statsTimer = setInterval(updateStats, 1000);
+                }
+            };
+        })();
+    </script>
+
+    <div class="content-spacer"></div>
+    <footer>
+        &copy; Skealy Studios. All rights reserved.
+    </footer>
+    </div> <!-- End page-container -->
+
+</body>
+
+</html>

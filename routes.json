@@ -1,0 +1,1509 @@
+{
+  "chennai-karaikudi": {
+    "points": [
+      {
+        "latlng": [
+          13.111881051166302,
+          80.27198686463295
+        ],
+        "placeName": "Chennai",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          12.92723877957986,
+          80.09750636322563
+        ],
+        "placeName": "Tambaram",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          12.680836787013114,
+          79.9752326260189
+        ],
+        "placeName": "Chengalpattu",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          12.509285684526315,
+          79.87631454648086
+        ],
+        "placeName": "Maduranthakam",
+        "placeType": "town"
+      },
+      {
+        "latlng": [
+          12.228930451123702,
+          79.64001024536228
+        ],
+        "placeName": "Tindivanam",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.941559805321065,
+          79.49300698827105
+        ],
+        "placeName": "Viluppuram",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.513970840030655,
+          79.32539579794273
+        ],
+        "placeName": "Virudhachalam",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.134242809207562,
+          79.06710970137124
+        ],
+        "placeName": "Ariyalur",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.384121577912982,
+          78.81844064031038
+        ],
+        "placeName": "Pudukkottai",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.075989268657397,
+          78.77722477383618
+        ],
+        "placeName": "Karaikudi",
+        "placeType": "city"
+      }
+    ],
+    "total_distance": "380.30"
+  },
+  "chennai-ak63": {
+    "points": [
+      {
+        "latlng": [
+          13.078491600201218,
+          80.26014393026385
+        ],
+        "placeName": "Chennai",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          13.005002375430408,
+          80.25708198849381
+        ],
+        "placeName": "Adayar",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          12.892557026464146,
+          80.2300812709504
+        ],
+        "placeName": "Sholinganallur",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          12.79443645581837,
+          80.22465329079662
+        ],
+        "placeName": "Kelambakkam",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          12.726644465416754,
+          80.18648207698875
+        ],
+        "placeName": "Tiruporur",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.605500512607506,
+          80.06180090037337
+        ],
+        "placeName": "Thirukazhukundram",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.35046035744,
+          80.00107087610861
+        ],
+        "placeName": "Cheyur",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          11.928521439750327,
+          79.81659715812481
+        ],
+        "placeName": "Puducherry",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          11.76788337846152,
+          79.75518551126788
+        ],
+        "placeName": "Cuddalore",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          11.399481284223839,
+          79.6880491567944
+        ],
+        "placeName": "Chidambaram",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.237738775583026,
+          79.73481782686112
+        ],
+        "placeName": "Sirkazhi",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.105171018074728,
+          79.63928531140722
+        ],
+        "placeName": "Mayiladuthurai",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.914850732528436,
+          79.45382425342567
+        ],
+        "placeName": "Nachiyarkoil",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          10.771265085875513,
+          79.41745429656481
+        ],
+        "placeName": "Needamangalam",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.62739805908383,
+          79.25492842317492
+        ],
+        "placeName": "Orathanadu",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.462000394889955,
+          79.1347465309516
+        ],
+        "placeName": "Karambakkudi",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          10.362292535946523,
+          78.79500113367936
+        ],
+        "placeName": "Pudukkottai",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.238536318750505,
+          78.74813080270812
+        ],
+        "placeName": "Tirumayam",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          10.07369046830462,
+          78.75978260107468
+        ],
+        "placeName": "Karaikudi",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          9.98792945761518,
+          78.66360583674818
+        ],
+        "placeName": "Kallal",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.964913663566065,
+          78.5927885563456
+        ],
+        "placeName": "Paganeri",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.998274860531225,
+          78.5121758607618
+        ],
+        "placeName": "Alavaakkottai",
+        "type": "stop",
+        "placeType": "village"
+      }
+    ],
+    "total_distance": "433.23"
+  },
+  "Bangalore-Rameshwaram": {
+    "points": [
+      {
+        "latlng": [
+          13.196851684062338,
+          77.70474027012992
+        ],
+        "placeName": "Kempagowda International Airport",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.967318078658707,
+          77.74906263983264
+        ],
+        "placeName": "Whitefield - Bangalore",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.837382103856498,
+          77.67944888119564
+        ],
+        "placeName": "Electronics City",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.721669353424772,
+          77.8129759288449
+        ],
+        "placeName": "Hosur",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.515048581704718,
+          78.03277804443887
+        ],
+        "placeName": "Rayakottai",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.125944870913727,
+          78.15407133012505
+        ],
+        "placeName": "Dharmapuri",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          11.783929538631426,
+          78.0628014833635
+        ],
+        "placeName": "Salem Airport",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          11.66699345824216,
+          78.11225356021315
+        ],
+        "placeName": "Salem",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          10.794032729498937,
+          78.68595420856171
+        ],
+        "placeName": "Trichirapalli",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          10.372222093809611,
+          78.8014407034253
+        ],
+        "placeName": "Pudukkottai",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          10.00000809443263,
+          78.51446020043554
+        ],
+        "placeName": "Alavaakkottai",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          9.871368600893433,
+          78.55349825951394
+        ],
+        "placeName": "Nattarasankottai",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          9.539325639054965,
+          78.59102826456719
+        ],
+        "placeName": "Paramakkudi",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.357987826406898,
+          78.83758232134953
+        ],
+        "placeName": "Ramanathapuram",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.27426628688589,
+          79.1302087727668
+        ],
+        "placeName": "Maraikayar Pattinam",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.283059657792322,
+          79.15306420038681
+        ],
+        "placeName": "Mandapam",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.283018834611326,
+          79.21224867424469
+        ],
+        "placeName": "Pamban",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.283050832033084,
+          79.25042647733346
+        ],
+        "placeName": "Thangachimadam",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.280967604340447,
+          79.30767798809309
+        ],
+        "placeName": "Rameswaram",
+        "type": "stop"
+      }
+    ],
+    "total_distance": "548.29"
+  },
+  "Alavai-Sivaganga-Madurai": {
+    "points": [
+      {
+        "latlng": [
+          9.999901,
+          78.514475
+        ],
+        "placeName": "Alavaakkottai",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.990797,
+          78.537165
+        ],
+        "placeName": "Madagupatti",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.965974,
+          78.586898
+        ],
+        "placeName": "Paganeri",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.920465,
+          78.607578
+        ],
+        "placeName": "Natarajapuram",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.868592,
+          78.554541
+        ],
+        "placeName": "Nattarasankottai",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.848057,
+          78.489678
+        ],
+        "placeName": "Sivaganga",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.900162,
+          78.16361
+        ],
+        "placeName": "Madurai East",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          9.917679,
+          78.119981
+        ],
+        "placeName": "Madurai Junction",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          9.934865,
+          78.102502
+        ],
+        "placeName": "Arappalayam",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          9.948084,
+          78.108581
+        ],
+        "placeName": "Kudal Nagar",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          9.94282,
+          78.139052
+        ],
+        "placeName": "Madurai Race Course",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          9.959262,
+          78.183601
+        ],
+        "placeName": "Othakadai",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          10.030191,
+          78.337915
+        ],
+        "placeName": "Melur",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.001885,
+          78.410132
+        ],
+        "placeName": "Kottanathaan Patti",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.998422,
+          78.434591
+        ],
+        "placeName": "Vellalur",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.00552,
+          78.469793
+        ],
+        "placeName": "Alagamanagari",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.999902,
+          78.514477
+        ],
+        "placeName": "Alavaakkottai",
+        "type": "stop",
+        "placeType": "village"
+      }
+    ],
+    "total_distance": "122.98"
+  },
+  "PDK-SVG-KRK loop": {
+    "points": [
+      {
+        "latlng": [
+          10.371950394729836,
+          78.80155633994295
+        ],
+        "placeName": "Pudukkottai"
+      },
+      {
+        "latlng": [
+          10.000183150015943,
+          78.5147243024488
+        ],
+        "placeName": "Alavaakkottai"
+      },
+      {
+        "latlng": [
+          9.847995598635961,
+          78.48928900664076
+        ],
+        "placeName": "Sivaganga"
+      },
+      {
+        "latlng": [
+          10.07834257105202,
+          78.78822972649549
+        ],
+        "placeName": "Karaikudi"
+      },
+      {
+        "latlng": [
+          10.371950618591185,
+          78.80155577399074
+        ],
+        "placeName": "Pudukkottai"
+      }
+    ],
+    "total_distance": "143.31"
+  },
+  "goa-alk": {
+    "points": [
+      {
+        "latlng": [
+          15.387865459231435,
+          73.87010961903005
+        ],
+        "placeName": "Goa"
+      },
+      {
+        "latlng": [
+          14.727484347692112,
+          74.28568614253072
+        ],
+        "placeName": "Avarsa"
+      },
+      {
+        "latlng": [
+          14.552191986939448,
+          74.33197829972444
+        ],
+        "placeName": "Gokarna"
+      },
+      {
+        "latlng": [
+          13.93246955627086,
+          75.56592033185251
+        ],
+        "placeName": "Shivamogga"
+      },
+      {
+        "latlng": [
+          13.317126854115017,
+          75.77174473184861
+        ],
+        "placeName": "Chikkamagaluru"
+      },
+      {
+        "latlng": [
+          12.426213757089528,
+          75.74409703547332
+        ],
+        "placeName": "Madikeri"
+      },
+      {
+        "latlng": [
+          12.316609142507033,
+          76.63746124583588
+        ],
+        "placeName": "Mysore"
+      },
+      {
+        "latlng": [
+          11.00428794198831,
+          76.96081985441901
+        ],
+        "placeName": "Coimbatore"
+      },
+      {
+        "latlng": [
+          10.448341333405551,
+          77.51587984384778
+        ],
+        "placeName": "Palani"
+      },
+      {
+        "latlng": [
+          9.910884251341017,
+          78.12898530387936
+        ],
+        "placeName": "Madurai"
+      },
+      {
+        "latlng": [
+          9.999384049096776,
+          78.51388331620963
+        ],
+        "placeName": "Alavaakkottai"
+      }
+    ],
+    "total_distance": "894.53"
+  },
+  "Kanniyakumari-Chennai": {
+    "points": [
+      {
+        "latlng": [
+          8.087677504894586,
+          77.54324905598861
+        ],
+        "placeName": "Kanyakumari"
+      },
+      {
+        "latlng": [
+          8.17371773040432,
+          77.44337737547578
+        ],
+        "placeName": "Nagercoil"
+      },
+      {
+        "latlng": [
+          8.727128213501501,
+          77.71175224531298
+        ],
+        "placeName": "Tirunelveli"
+      },
+      {
+        "latlng": [
+          9.919540061370782,
+          78.11083759874337
+        ],
+        "placeName": "Madurai"
+      },
+      {
+        "latlng": [
+          9.997564453367843,
+          78.51261566936954
+        ],
+        "placeName": "Alavaakkottai"
+      },
+      {
+        "latlng": [
+          10.078030093009176,
+          78.78818807182847
+        ],
+        "placeName": "Karaikudi"
+      },
+      {
+        "latlng": [
+          10.371716155328173,
+          78.80124079237322
+        ],
+        "placeName": "Pudukkottai"
+      },
+      {
+        "latlng": [
+          10.794716476433862,
+          78.68293613784937
+        ],
+        "placeName": "Trichy"
+      },
+      {
+        "latlng": [
+          12.89458964343109,
+          80.08908221774674
+        ],
+        "placeName": "Vandalur"
+      },
+      {
+        "latlng": [
+          12.926981987779769,
+          80.12192985106405
+        ],
+        "placeName": "Tambaram"
+      },
+      {
+        "latlng": [
+          12.985155613651756,
+          80.16875053019368
+        ],
+        "placeName": "Chennai Airport"
+      },
+      {
+        "latlng": [
+          13.079007766484636,
+          80.26023369284606
+        ],
+        "placeName": "Chennai Central"
+      }
+    ],
+    "total_distance": "687.09"
+  },
+  "Pdkt-Svga": {
+    "points": [
+      {
+        "latlng": [
+          10.3721950201587,
+          78.801149525159
+        ],
+        "placeName": "Pudukkottai",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.24066859846593,
+          78.74268455860498
+        ],
+        "placeName": "Tirumayam",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          10.184945900893169,
+          78.6615302202374
+        ],
+        "placeName": "Kilaseevalpatti",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          10.112030503699572,
+          78.60318042875625
+        ],
+        "placeName": "Tiruppattur",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.05808939826349,
+          78.55846539408927
+        ],
+        "placeName": "Thirukoshtiyur",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.997560556565318,
+          78.51246655691939
+        ],
+        "placeName": "Alavaakkottai",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.941711679031428,
+          78.51876368711171
+        ],
+        "placeName": "Okkur",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.85812548526421,
+          78.4880572480075
+        ],
+        "placeName": "Sivaganga",
+        "type": "stop",
+        "placeType": "village"
+      }
+    ],
+    "total_distance": "69.39"
+  },
+  "sample": {
+    "points": [
+      {
+        "latlng": [
+          9.999898538342507,
+          78.51407781200976
+        ],
+        "placeName": "Alavaakkottai",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          10.001415622575053,
+          78.51563303576948
+        ],
+        "placeName": "Alavaakkottai",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          10.001290614677444,
+          78.52098073447384
+        ],
+        "placeName": "Alagamanagari",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.999250227734905,
+          78.52293150179955
+        ],
+        "placeName": "Alagamanagari",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.999264290124458,
+          78.52698707135457
+        ],
+        "placeName": "Alagamanagari",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          9.992716558639714,
+          78.53730773429655
+        ],
+        "placeName": "Madagupatti",
+        "type": "stop"
+      }
+    ],
+    "total_distance": "2.93"
+  },
+  "chenreno": {
+    "points": [
+      {
+        "latlng": [
+          12.995094,
+          80.168884
+        ],
+        "placeName": "Meenambakkam",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          39.500526,
+          -119.769327
+        ],
+        "placeName": "Reno",
+        "type": "stop"
+      }
+    ],
+    "total_distance": "13823.31"
+  },
+  "Wayanad-Chennai": {
+    "points": [
+      {
+        "latlng": [
+          11.52155,
+          76.020603
+        ],
+        "placeName": "Lakkidi",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          11.547004,
+          76.039553
+        ],
+        "placeName": "Vythiri",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          11.60734,
+          76.08372
+        ],
+        "placeName": "Kalpetta",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          11.664154,
+          76.25957
+        ],
+        "placeName": "Sultan Bathery",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          11.805179,
+          76.689141
+        ],
+        "placeName": "Gundlupet",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          11.924183,
+          76.933129
+        ],
+        "placeName": "Chamarajanagara",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.047557,
+          77.030588
+        ],
+        "placeName": "Yelanduru",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.158903,
+          77.110667
+        ],
+        "placeName": "Kollegal",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.327297,
+          77.412079
+        ],
+        "placeName": "Hegganuru",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.682683,
+          77.796217
+        ],
+        "placeName": "Mathigiri",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.718248,
+          77.8231
+        ],
+        "placeName": "Hosur",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.96408,
+          78.27104
+        ],
+        "placeName": "KGF",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.915597,
+          79.130405
+        ],
+        "placeName": "Vellore",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.832986,
+          79.713354
+        ],
+        "placeName": "Kanchipuram",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.683842,
+          79.984687
+        ],
+        "placeName": "Chengalpattu",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.79045,
+          80.222602
+        ],
+        "placeName": "Kelambakkam",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.896686,
+          80.228184
+        ],
+        "placeName": "Sholinganallur",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          12.986708,
+          80.255846
+        ],
+        "placeName": "Thiruvanmiyur",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          13.062341,
+          80.245338
+        ],
+        "placeName": "Nungambakkam",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          13.095088,
+          80.198972
+        ],
+        "placeName": "Anna Nagar",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          13.121778,
+          80.149635
+        ],
+        "placeName": "Ambattur",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          13.118757,
+          80.101185
+        ],
+        "placeName": "Avadi",
+        "type": "stop"
+      }
+    ],
+    "total_distance": "566.86"
+  },
+  "sf-reno": {
+    "points": [
+      {
+        "latlng": [
+          37.806991,
+          -122.426104
+        ],
+        "placeName": "San Francisco",
+        "type": "stop"
+      },
+      {
+        "latlng": [
+          39.498772,
+          -119.752047
+        ],
+        "placeName": "Reno",
+        "type": "stop"
+      }
+    ],
+    "total_distance": "298.82"
+  },
+  "Chennai-Kozhikode": {
+    "points": [
+      {
+        "latlng": [
+          13.118757,
+          80.101185
+        ],
+        "placeName": "Avadi",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          13.121778,
+          80.149635
+        ],
+        "placeName": "Ambattur",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          13.095088,
+          80.198972
+        ],
+        "placeName": "Anna Nagar",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          13.062341,
+          80.245338
+        ],
+        "placeName": "Nungambakkam",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          12.986708,
+          80.255846
+        ],
+        "placeName": "Thiruvanmiyur",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.896686,
+          80.228184
+        ],
+        "placeName": "Sholinganallur",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          12.79045,
+          80.222602
+        ],
+        "placeName": "Kelambakkam",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          12.683842,
+          79.984687
+        ],
+        "placeName": "Chengalpattu",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          12.832986,
+          79.713354
+        ],
+        "placeName": "Kanchipuram",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          12.915597,
+          79.130405
+        ],
+        "placeName": "Vellore",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          12.96408,
+          78.27104
+        ],
+        "placeName": "KGF",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.718248,
+          77.8231
+        ],
+        "placeName": "Hosur",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          12.682683,
+          77.796217
+        ],
+        "placeName": "Mathigiri",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.327297,
+          77.412079
+        ],
+        "placeName": "Hegganuru",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.158903,
+          77.110667
+        ],
+        "placeName": "Kollegal",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          12.047557,
+          77.030588
+        ],
+        "placeName": "Yelanduru",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          11.924183,
+          76.933129
+        ],
+        "placeName": "Chamarajanagara",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          11.805179,
+          76.689141
+        ],
+        "placeName": "Gundlupet",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.664154,
+          76.25957
+        ],
+        "placeName": "Sultan Bathery",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.60734,
+          76.08372
+        ],
+        "placeName": "Kalpetta",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.547004,
+          76.039553
+        ],
+        "placeName": "Vythiri",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.52155,
+          76.020603
+        ],
+        "placeName": "Lakkidi",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          11.482236,
+          76.019311
+        ],
+        "placeName": "Adivaram",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          11.359113,
+          75.909296
+        ],
+        "placeName": "Koduvally",
+        "type": "waypoint"
+      },
+      {
+        "latlng": [
+          11.214823,
+          75.7853
+        ],
+        "placeName": "Kozhikode",
+        "type": "stop",
+        "placeType": "city"
+      }
+    ],
+    "total_distance": "610.42"
+  },
+  "ALK-KRK loop": {
+    "points": [
+      {
+        "latlng": [
+          10.000382,
+          78.514769
+        ],
+        "placeName": "Alavaakkottai",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.99947,
+          78.514425
+        ],
+        "placeName": "Point 2",
+        "type": "dummy",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.998817,
+          78.514468
+        ],
+        "placeName": "Point 3",
+        "type": "dummy",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.998382,
+          78.515098
+        ],
+        "placeName": "Point 4",
+        "type": "dummy",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.989765,
+          78.537397
+        ],
+        "placeName": "Madagupatti",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.965382,
+          78.586912
+        ],
+        "placeName": "Paganeri",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.960208,
+          78.606003
+        ],
+        "placeName": "Paganeri",
+        "type": "dummy",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          9.986262,
+          78.667238
+        ],
+        "placeName": "Kallal",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          10.06529,
+          78.776557
+        ],
+        "placeName": "Karaikudi",
+        "type": "stop",
+        "placeType": "city"
+      },
+      {
+        "latlng": [
+          10.114408,
+          78.699518
+        ],
+        "placeName": "Kundrakudi",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.118656,
+          78.66758
+        ],
+        "placeName": "Pillayarpatti",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.110626,
+          78.600234
+        ],
+        "placeName": "Tiruppattur",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.058237,
+          78.558415
+        ],
+        "placeName": "Thirukoshtiyur",
+        "type": "stop",
+        "placeType": "village"
+      },
+      {
+        "latlng": [
+          10.000382,
+          78.514769
+        ],
+        "placeName": "Alavaakkottai",
+        "type": "stop",
+        "placeType": "village"
+      }
+    ],
+    "total_distance": "69.56"
+  }
+}

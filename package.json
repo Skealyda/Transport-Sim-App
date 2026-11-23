@@ -1,0 +1,28 @@
+{
+  "name": "transport-simulator-web-app",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:map": "node scripts/map-regression.mjs",
+    "test:manual": "node scripts/manual-controls-regression.mjs",
+    "test:3d": "node scripts/three-d-regression.mjs",
+    "check:imports": "node scripts/check-imports.mjs",
+    "perf": "node scripts/perf-probe.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.65.1",
+    "vite": "^6.4.6",
+    "vite-plugin-pwa": "^1.1.0",
+    "vitest": "^4.1.12"
+  },
+  "dependencies": {
+    "lucide": "^1.78.0",
+    "ol": "^10.11.0",
+    "three": "0.180.0"
+  }
+}
