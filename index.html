@@ -157,7 +157,9 @@
                     <option value="air">✈️ Air</option>
                 </select>
             </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+                <button type="button" onclick="importRoutesFile()"
+                    style="margin-right: auto; background: rgba(14, 165, 233, 0.15); border: 1px solid #0ea5e9; color: #7dd3fc; border-radius: 8px; padding: 10px 14px; cursor: pointer;">Import JSON</button>
                 <button onclick="loadSelectedRoute()"
                     style="background: linear-gradient(135deg, #10b981, #059669); border: none; color: white; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-weight: 500;">Load</button>
                 <button onclick="closeRouteDialog()"
@@ -1279,6 +1281,36 @@
                 </select>
                 <p style="font-size: 11px; color: #94a3b8; margin-bottom: 0;">Resolution adapts to the device display and frame budget. Performance Mode still provides a hard battery-saving cap.</p>
             </div>
+            <div class="instrument-setting world3d-environment-setting">
+                <label>3D Cabin Environment</label>
+                <div class="world3d-environment-grid">
+                    <label for="world3dTimeMode">Time
+                        <select id="world3dTimeMode" onchange="set3DEnvironmentTimeMode(this.value)">
+                            <option value="live">Live local time</option>
+                            <option value="custom">Choose a time</option>
+                        </select>
+                    </label>
+                    <label for="world3dTime">Cabin time
+                        <input id="world3dTime" type="time" value="12:00" onchange="set3DEnvironmentTime(this.value)">
+                    </label>
+                    <label for="world3dWeatherSetting">Weather
+                        <select id="world3dWeatherSetting" onchange="set3DEnvironmentWeather(this.value)">
+                            <option value="live">Live weather</option>
+                            <option value="clear">Clear</option>
+                            <option value="cloudy">Cloudy</option>
+                            <option value="rain">Rain</option>
+                            <option value="snow">Snow</option>
+                            <option value="fog">Fog</option>
+                        </select>
+                    </label>
+                    <label class="world3d-hud-toggle" for="world3dHudVisibleSetting">
+                        <span>Digital HUD</span>
+                        <input id="world3dHudVisibleSetting" type="checkbox" checked onchange="set3DEnvironmentHud(this.checked)">
+                        <span>Show in 3D cabin</span>
+                    </label>
+                </div>
+                <p>These overrides affect the 3D scene only and are saved on this device.</p>
+            </div>
             <div style="margin-bottom: 20px;">
                 <label for="targetFPSSelect" style="display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #e2e8f0;">Simulation FPS Limit</label>
                 <select id="targetFPSSelect" onchange="setTargetFPS(this.value)" style="width: 100%; padding: 8px; border-radius: 6px; background: #0f172a; color: #cbd5e1; border: 1px solid #475569;">
@@ -1307,9 +1339,9 @@
                 <div id="routeStorageStatus" style="font-size: 12px; color: #cbd5e1;">Loading routes…</div>
                 <div style="display: flex; flex-wrap: wrap; gap: 6px;">
                     <button type="button" id="routeFolderBtn" onclick="connectRoutesFolder()" style="padding: 6px 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.5); color: #10b981; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600;">Choose Downloads/routes</button>
-                    <button type="button" onclick="syncRoutesNow()" style="padding: 6px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(71, 85, 105, 0.6); color: #cbd5e1; border-radius: 8px; cursor: pointer; font-size: 12px;">Refresh folder</button>
+                    <button type="button" id="routeRefreshBtn" onclick="syncRoutesNow()" style="padding: 6px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(71, 85, 105, 0.6); color: #cbd5e1; border-radius: 8px; cursor: pointer; font-size: 12px;">Refresh folder</button>
                     <button type="button" onclick="exportRoutesFile()" style="padding: 6px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(71, 85, 105, 0.6); color: #cbd5e1; border-radius: 8px; cursor: pointer; font-size: 12px;">Download routes.json</button>
-                    <button type="button" onclick="importRoutesFile()" style="padding: 6px 12px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(71, 85, 105, 0.6); color: #cbd5e1; border-radius: 8px; cursor: pointer; font-size: 12px;">Import</button>
+                    <button type="button" onclick="importRoutesFile()" style="padding: 6px 12px; background: rgba(14, 165, 233, 0.15); border: 1px solid #0ea5e9; color: #7dd3fc; border-radius: 8px; cursor: pointer; font-size: 12px;">Import JSON</button>
                 </div>
                 <p id="routeStorageHint">Routes are saved on this device and can optionally be mirrored to a local routes.json file.</p>
             </div>
@@ -1488,6 +1520,9 @@
                 <div class="world3d-camera-buttons" role="group" aria-label="Camera view">
                     <button id="world3dChase" type="button" aria-pressed="true">Chase</button>
                     <button id="world3dCab" type="button" aria-pressed="false">Cab</button>
+                    <button id="world3dFront" type="button" aria-pressed="false">Front</button>
+                    <button id="world3dSide" type="button" aria-pressed="false">Side</button>
+                    <button id="world3dRoof" type="button" aria-pressed="false">Roof</button>
                     <button id="world3dFree" type="button" aria-pressed="false" title="Drag to orbit the train">Orbit</button>
                     <button id="world3dZoomIn" type="button" aria-label="Zoom in">+</button>
                     <button id="world3dZoomOut" type="button" aria-label="Zoom out">−</button>
@@ -1496,11 +1531,55 @@
                     <button id="world3dAssist" type="button" aria-pressed="false" title="Show accessible cab controls" hidden>Controls</button>
                     <button id="world3dBack" type="button">2D</button>
                 </div>
+                <div class="world3d-mobile-camera-bar" aria-label="Compact 3D view controls">
+                    <label for="world3dMobileCameraSelect">View
+                        <select id="world3dMobileCameraSelect">
+                            <option value="chase">Chase</option>
+                            <option value="cab">Cab</option>
+                            <option value="front">Front</option>
+                            <option value="side">Side</option>
+                            <option value="roof">Roof</option>
+                            <option value="free">Orbit</option>
+                        </select>
+                    </label>
+                    <button id="world3dMobileZoomOut" type="button" aria-label="Zoom out">−</button>
+                    <button id="world3dMobileZoomIn" type="button" aria-label="Zoom in">+</button>
+                    <button id="world3dMobileHudToggle" type="button" aria-pressed="true">HUD</button>
+                    <button id="world3dMobileBack" type="button">2D</button>
+                </div>
                 <span id="world3dStatus" role="status" hidden></span>
                 <span id="world3dWeather" role="status" hidden></span>
                 <input id="world3dDataFile" type="file" accept=".geojson,.json,application/geo+json,application/json" hidden>
                 <a id="world3dAttribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="display:none;">© OpenStreetMap contributors</a>
             </div>
+            <section id="world3dMobileHud" class="world3d-mobile-hud" aria-label="Compact digital driving information" hidden>
+                <div><span id="world3dHudSpeed">0</span><small>km/h</small></div>
+                <div><small>NEXT</small><strong id="world3dHudNext">End of line</strong></div>
+                <div><small>LIMIT</small><strong id="world3dHudLimit">0</strong></div>
+            </section>
+            <section id="world3dMobileDrive" class="world3d-mobile-drive" aria-label="Mobile train controls" hidden>
+                <div class="world3d-mobile-readout">
+                    <div><span id="world3dMobileSpeed">0</span><small> km/h</small></div>
+                    <div class="world3d-mobile-limit">
+                        <button id="world3dMobileLimitDown" type="button" aria-label="Reduce speed limit">−</button>
+                        <span><small>LIMIT</small><strong id="world3dMobileLimit">0</strong></span>
+                        <button id="world3dMobileLimitUp" type="button" aria-label="Increase speed limit">+</button>
+                    </div>
+                </div>
+                <div class="world3d-mobile-drive-modes" role="group" aria-label="Driving lever">
+                    <button type="button" data-drive-mode="brake" class="world3d-mobile-action">Brake</button>
+                    <button type="button" data-drive-mode="coast" class="world3d-mobile-action is-active">Coast</button>
+                    <button type="button" data-drive-mode="power" class="world3d-mobile-action">Power</button>
+                </div>
+                <div class="world3d-mobile-utilities" role="group" aria-label="Train controls">
+                    <button id="world3dMobileDoors" type="button">Doors</button>
+                    <button id="world3dMobileHorn" type="button">Horn</button>
+                    <button id="world3dMobileWiper" type="button">Wiper</button>
+                    <button id="world3dMobileAutopilot" type="button">Auto</button>
+                    <button id="world3dMobileEmergency" type="button" class="emergency">Stop</button>
+                </div>
+                <p id="world3dMobileHint">Manual control</p>
+            </section>
             <!-- Weather Effects Container -->
             <div id="weatherEffectsContainer"></div>
 

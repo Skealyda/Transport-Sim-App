@@ -90,9 +90,10 @@ async function exercise(viewport) {
 		const map = await page.locator('#map').boundingBox();
 		assert.ok(controls.x >= map.x && controls.y >= map.y && controls.x + controls.width <= map.x + map.width &&
 			controls.y + controls.height <= map.y + map.height, '3D controls remain inside the map');
-		await page.locator('#world3dCab').click();
+		if (viewport.width <= 768) await page.locator('#world3dMobileCameraSelect').selectOption('cab');
+		else await page.locator('#world3dCab').click();
 		assert.equal(await page.locator('#world3dCab').getAttribute('aria-pressed'), 'true');
-		assert.equal(await page.locator('#world3dZoomIn').isDisabled(), true);
+		assert.equal(await page.locator('#world3dZoomIn').isDisabled(), false);
 		await page.waitForFunction(() => document.body.classList.contains('world3d-cab-manual'));
 		await page.waitForFunction(() => {
 			const canvas = document.querySelector('#world3dContainer canvas');
@@ -107,60 +108,94 @@ async function exercise(viewport) {
 		await page.mouse.move(worldCanvasBounds.x + worldCanvasBounds.width / 2, worldCanvasBounds.y + 8);
 		await page.waitForFunction(() => document.body.classList.contains('world3d-ui-active'));
 		assert.ok(!(await page.locator('#manualControlPanel').isVisible()), 'cab does not obscure the view with an overlay');
-		const deskCanvas = await page.locator('#world3dContainer canvas').boundingBox();
-		const aspect = deskCanvas.width / deskCanvas.height;
-		const scale = Math.min(1, aspect * 0.55);
-		const field = Math.tan(57 * Math.PI / 360);
-		const deskPoint = (x, y) => ({
-			x: deskCanvas.x + deskCanvas.width * (1 + x * scale / (1.31 * field * aspect)) / 2,
-			y: deskCanvas.y + deskCanvas.height * (1 - y / (1.31 * field)) / 2
-		});
-		const limit = deskPoint(-0.39, -0.57);
-		await page.mouse.move(limit.x, limit.y);
-		await page.mouse.wheel(0, -100);
-		assert.equal(await page.evaluate(() => window.state.manualControlState.targetSpeed), 5, 'physical speed roller responds');
-		const wiper = deskPoint(0.18, -0.56);
-		await page.mouse.click(wiper.x, wiper.y);
-		assert.equal(await page.evaluate(() => window.state.world3D.getStats().wipers), true, 'physical wiper button responds');
-		await page.mouse.click(wiper.x, wiper.y);
-		assert.equal(await page.evaluate(() => window.state.world3D.getStats().wipers), false);
-		const doors = deskPoint(0.45, -0.56);
-		await page.mouse.click(doors.x, doors.y);
-		assert.equal(await page.evaluate(() => window.state.manualControlState.doorsOpen), true, 'physical door button responds');
-		assert.ok(await page.evaluate(() => window.state.world3D.getStats().passengerAnimations) > 0,
-			'opening doors at a station starts a 3D passenger flow');
-		await page.mouse.click(doors.x, doors.y);
-		assert.equal(await page.evaluate(() => window.state.manualControlState.doorsOpen), false);
-		const horn = deskPoint(0.72, -0.56);
-		await page.mouse.click(horn.x, horn.y);
-		const autopilot = deskPoint(0.99, -0.56);
-		await page.mouse.click(autopilot.x, autopilot.y);
-		assert.equal(await page.evaluate(() => window.state.manualControlState.autopilotActive), true, 'physical autopilot button enables automatic control');
-		await page.mouse.click(autopilot.x, autopilot.y);
-		assert.equal(await page.evaluate(() => window.state.manualControlState.autopilotActive), false, 'physical autopilot button returns control');
-		await page.mouse.move(worldCanvasBounds.x + worldCanvasBounds.width / 2, worldCanvasBounds.y + 8);
-		await page.waitForFunction(() => document.body.classList.contains('world3d-ui-active'));
-		await page.locator('#world3dScreens').click();
-		assert.equal(await page.evaluate(() => window.state.world3D.getStats().cabDisplays), false);
-		await page.locator('#world3dScreens').click();
-		assert.equal(await page.evaluate(() => window.state.world3D.getStats().cabDisplays), true);
-		await page.locator('#world3dAssist').click();
-		assert.ok(await page.locator('#compactPower').isVisible(), 'accessible cab controls are available');
-		await page.locator('#compactSpeed').fill('40');
-		assert.equal(await page.evaluate(() => window.state.manualControlState.targetSpeed), 40);
-		await page.locator('#compactBrake').fill('25');
-		assert.equal(await page.evaluate(() => window.state.manualControlState.brakeLevel), 25);
-		await page.locator('#compactBrake').fill('0');
-		await page.locator('#compactWiper').click();
-		assert.equal(await page.evaluate(() => window.state.world3D.getStats().wipers), true);
-		assert.equal(await page.locator('#compactWiper').getAttribute('aria-pressed'), 'true');
-		await page.locator('#compactDoors').click();
-		assert.equal(await page.evaluate(() => window.state.manualControlState.doorsOpen), true);
-		await page.locator('#compactDoors').click();
-		assert.equal(await page.evaluate(() => window.state.manualControlState.doorsOpen), false);
-		await page.mouse.move(worldCanvasBounds.x + worldCanvasBounds.width / 2, worldCanvasBounds.y + 8);
-		await page.waitForFunction(() => document.body.classList.contains('world3d-ui-active'));
-		await page.locator('#world3dAssist').click();
+		if (viewport.width <= 768) {
+			assert.ok(await page.locator('#world3dMobileDrive').isVisible(), 'mobile cab uses the simplified touch dock');
+			assert.ok(await page.locator('#world3dMobileHud').isVisible(), 'mobile cab shows a compact unobstructive HUD');
+			await page.locator('#world3dMobileHudToggle').click();
+			assert.equal(await page.locator('#world3dMobileHud').isVisible(), false);
+			await page.locator('#world3dMobileHudToggle').click();
+			assert.equal(await page.locator('#world3dMobileHud').isVisible(), true);
+			await page.locator('#world3dMobileLimitUp').click();
+			assert.equal(await page.evaluate(() => window.state.manualControlState.targetSpeed), 10);
+			await page.locator('[data-drive-mode="power"]').click();
+			assert.equal(await page.evaluate(() => window.state.manualControlState.acceleration), 55);
+			await page.locator('[data-drive-mode="brake"]').click();
+			assert.equal(await page.evaluate(() => window.state.manualControlState.brakeLevel), 100);
+			await page.locator('[data-drive-mode="coast"]').click();
+			assert.equal(await page.evaluate(() => window.state.manualControlState.brakeLevel), 0);
+			await page.locator('#world3dMobileWiper').click();
+			assert.equal(await page.evaluate(() => window.state.world3D.getStats().wipers), true);
+			await page.locator('#world3dMobileWiper').click();
+			await page.locator('#world3dMobileDoors').click();
+			assert.equal(await page.evaluate(() => window.state.manualControlState.doorsOpen), true);
+			await page.locator('#world3dMobileDoors').click();
+			await page.locator('#world3dMobileAutopilot').click();
+			assert.equal(await page.evaluate(() => window.state.manualControlState.autopilotActive), true);
+			await page.locator('#world3dMobileAutopilot').click();
+			const initialFov = await page.evaluate(() => window.state.world3D.getStats().cameraFov);
+			await page.locator('#world3dMobileZoomIn').click();
+			assert.ok(await page.evaluate(value => window.state.world3D.getStats().cameraFov < value, initialFov));
+			await page.locator('#world3dMobileZoomOut').click();
+		} else {
+			const deskCanvas = await page.locator('#world3dContainer canvas').boundingBox();
+			const aspect = deskCanvas.width / deskCanvas.height;
+			const scale = Math.min(1, aspect * 0.55);
+			const field = Math.tan(57 * Math.PI / 360);
+			const deskPoint = (x, y) => ({
+				x: deskCanvas.x + deskCanvas.width * (1 + x * scale / (1.31 * field * aspect)) / 2,
+				y: deskCanvas.y + deskCanvas.height * (1 - y / (1.31 * field)) / 2
+			});
+			const limit = deskPoint(-0.39, -0.57);
+			await page.mouse.move(limit.x, limit.y);
+			await page.mouse.wheel(0, -100);
+			assert.equal(await page.evaluate(() => window.state.manualControlState.targetSpeed), 5, 'physical speed roller responds');
+			const wiper = deskPoint(0.18, -0.56);
+			await page.mouse.click(wiper.x, wiper.y);
+			assert.equal(await page.evaluate(() => window.state.world3D.getStats().wipers), true, 'physical wiper button responds');
+			await page.mouse.click(wiper.x, wiper.y);
+			assert.equal(await page.evaluate(() => window.state.world3D.getStats().wipers), false);
+			const doors = deskPoint(0.45, -0.56);
+			await page.mouse.click(doors.x, doors.y);
+			assert.equal(await page.evaluate(() => window.state.manualControlState.doorsOpen), true, 'physical door button responds');
+			assert.ok(await page.evaluate(() => window.state.world3D.getStats().passengerAnimations) > 0,
+				'opening doors at a station starts a 3D passenger flow');
+			await page.mouse.click(doors.x, doors.y);
+			assert.equal(await page.evaluate(() => window.state.manualControlState.doorsOpen), false);
+			const horn = deskPoint(0.72, -0.56);
+			await page.mouse.click(horn.x, horn.y);
+			const autopilot = deskPoint(0.99, -0.56);
+			await page.mouse.click(autopilot.x, autopilot.y);
+			assert.equal(await page.evaluate(() => window.state.manualControlState.autopilotActive), true, 'physical autopilot button enables automatic control');
+			await page.mouse.click(autopilot.x, autopilot.y);
+			assert.equal(await page.evaluate(() => window.state.manualControlState.autopilotActive), false, 'physical autopilot button returns control');
+			await page.mouse.move(worldCanvasBounds.x + worldCanvasBounds.width / 2, worldCanvasBounds.y + 8);
+			await page.waitForFunction(() => document.body.classList.contains('world3d-ui-active'));
+			await page.locator('#world3dScreens').click();
+			assert.equal(await page.evaluate(() => window.state.world3D.getStats().cabDisplays), false);
+			await page.locator('#world3dScreens').click();
+			assert.equal(await page.evaluate(() => window.state.world3D.getStats().cabDisplays), true);
+			await page.locator('#world3dAssist').click();
+			assert.ok(await page.locator('#compactPower').isVisible(), 'accessible cab controls are available');
+			await page.locator('#compactSpeed').fill('40');
+			assert.equal(await page.evaluate(() => window.state.manualControlState.targetSpeed), 40);
+			await page.locator('#compactBrake').fill('25');
+			assert.equal(await page.evaluate(() => window.state.manualControlState.brakeLevel), 25);
+			await page.locator('#compactBrake').fill('0');
+			await page.locator('#compactWiper').click();
+			assert.equal(await page.evaluate(() => window.state.world3D.getStats().wipers), true);
+			assert.equal(await page.locator('#compactWiper').getAttribute('aria-pressed'), 'true');
+			await page.locator('#compactDoors').click();
+			assert.equal(await page.evaluate(() => window.state.manualControlState.doorsOpen), true);
+			await page.locator('#compactDoors').click();
+			assert.equal(await page.evaluate(() => window.state.manualControlState.doorsOpen), false);
+			await page.mouse.move(worldCanvasBounds.x + worldCanvasBounds.width / 2, worldCanvasBounds.y + 8);
+			await page.waitForFunction(() => document.body.classList.contains('world3d-ui-active'));
+			await page.locator('#world3dAssist').click();
+			const initialFov = await page.evaluate(() => window.state.world3D.getStats().cameraFov);
+			await page.locator('#world3dZoomIn').click();
+			assert.ok(await page.evaluate(value => window.state.world3D.getStats().cameraFov < value, initialFov));
+			await page.locator('#world3dZoomOut').click();
+		}
 		await page.evaluate(() => {
 			window.state.weatherCardState.currentWeatherData = { condition: 'Rain' };
 		});
@@ -171,7 +206,8 @@ async function exercise(viewport) {
 		await page.evaluate(() => { window.state.progress = 0; });
 		await page.mouse.move(worldCanvasBounds.x + worldCanvasBounds.width / 2, worldCanvasBounds.y + 8);
 		await page.waitForFunction(() => document.body.classList.contains('world3d-ui-active'));
-		await page.locator('#world3dFree').click();
+		if (viewport.width <= 768) await page.locator('#world3dMobileCameraSelect').selectOption('free');
+		else await page.locator('#world3dFree').click();
 		assert.equal(await page.locator('#world3dFree').getAttribute('aria-pressed'), 'true');
 		const canvas = page.locator('#world3dContainer canvas');
 		const canvasBounds = await canvas.boundingBox();
@@ -179,7 +215,20 @@ async function exercise(viewport) {
 		await page.mouse.down();
 		await page.mouse.move(canvasBounds.x + canvasBounds.width / 2 + 40, canvasBounds.y + canvasBounds.height / 2 + 10);
 		await page.mouse.up();
-		await page.locator('#world3dChase').click();
+		if (viewport.width <= 768) await page.locator('#world3dMobileCameraSelect').selectOption('chase');
+		else await page.locator('#world3dChase').click();
+		for (const camera of ['front', 'side', 'roof']) {
+			if (viewport.width <= 768) {
+				await page.locator('#world3dMobileCameraSelect').selectOption(camera);
+			} else {
+				await page.locator(`#world3d${camera[0].toUpperCase()}${camera.slice(1)}`).click();
+			}
+			await page.waitForTimeout(100);
+			const fov = await page.evaluate(() => window.state.world3D.getStats().cameraFov);
+			assert.ok(Number.isFinite(fov), `${camera} camera provides a valid projection`);
+		}
+		if (viewport.width <= 768) await page.locator('#world3dMobileCameraSelect').selectOption('chase');
+		else await page.locator('#world3dChase').click();
 		if (viewport.width > 768) {
 			const lengths = await page.evaluate(async () => {
 				const { createWorldRoute } = await import('/js/modules/three-d/worldRoute.js');
@@ -244,13 +293,13 @@ async function exercise(viewport) {
 			})));
 			throw error;
 		}
-		await page.locator('#world3dBack').click();
+		await page.locator(viewport.width <= 768 ? '#world3dMobileBack' : '#world3dBack').click();
 		assert.equal(await page.evaluate(() => window.state.is3DMode), false);
 		assert.equal(await page.locator('#world3dContainer canvas').count(), 0);
 		assert.equal(await page.locator('#map .ol-viewport').evaluate(el => getComputedStyle(el).visibility), 'visible');
 		await page.locator('#toggle3DBtn').click();
 		await page.waitForFunction(() => window.state.is3DMode && window.state.world3D?.getStats().frames > 1);
-		await page.locator('#world3dBack').click();
+		await page.locator(viewport.width <= 768 ? '#world3dMobileBack' : '#world3dBack').click();
 		if (viewport.width > 768) {
 			await page.evaluate(() => {
 				window.stopSimulation();
@@ -271,7 +320,7 @@ async function exercise(viewport) {
 			await page.locator('#semiAutoCloseDoorsBtn').waitFor({ state: 'visible', timeout: 10000 });
 			await page.locator('#semiAutoCloseDoorsBtn').click();
 			await page.waitForFunction(() => window.state.index === 1, null, { timeout: 15000 });
-			await page.locator('#world3dBack').click();
+			await page.locator(viewport.width <= 768 ? '#world3dMobileBack' : '#world3dBack').click();
 		}
 		assert.ok(!requests.some(url => /cesium|3dtiles|terrain\/tiles/i.test(url)), '3D never requests Cesium or terrain tiles');
 		assert.deepEqual(errors, [], 'no uncaught 3D errors');

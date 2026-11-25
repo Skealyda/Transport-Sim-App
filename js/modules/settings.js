@@ -25,6 +25,8 @@ const DEFAULT_MAP_HEIGHT_PX = 620;
 const DEFAULT_STATION_SIZE_MULTIPLIER = 1.0; // user-facing default (display)
 const STATION_BASE_MULTIPLIER = 1.5; // internal base multiplier (actual 150%)
 const CAREER_TRAFFIC_BASELINE_FACTOR = 1.8;
+const WORLD3D_ENVIRONMENT_KEY = 'transportSimulator_3dEnvironment_v1';
+const WORLD3D_WEATHER_OPTIONS = ['live', 'clear', 'cloudy', 'rain', 'snow', 'fog'];
 
 function clampNumber(value, min, max, fallback) {
 	const n = parseFloat(value);
@@ -147,6 +149,68 @@ function loadMapContainerSizeFromStorage() {
 function updateGraphicsQualityUI() {
 	const select = document.getElementById('graphicsQualitySelect');
 	if (select) select.value = state.graphicsQuality;
+}
+
+function persist3DEnvironment() {
+	try { localStorage.setItem(WORLD3D_ENVIRONMENT_KEY, JSON.stringify(state.world3dEnvironment)); } catch {}
+}
+
+function update3DEnvironmentUI() {
+	const environment = state.world3dEnvironment;
+	const mode = document.getElementById('world3dTimeMode');
+	const time = document.getElementById('world3dTime');
+	const weather = document.getElementById('world3dWeatherSetting');
+	if (mode) mode.value = environment.timeMode;
+	if (time) {
+		time.value = environment.customTime;
+		time.disabled = environment.timeMode !== 'custom';
+	}
+	if (weather) weather.value = environment.weather;
+	const hud = document.getElementById('world3dHudVisibleSetting');
+	if (hud) hud.checked = environment.hudVisible !== false;
+}
+
+function set3DEnvironmentTimeMode(value) {
+	state.world3dEnvironment.timeMode = value === 'custom' ? 'custom' : 'live';
+	persist3DEnvironment();
+	update3DEnvironmentUI();
+}
+
+function set3DEnvironmentTime(value) {
+	state.world3dEnvironment.customTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(value || '') ? value : '12:00';
+	persist3DEnvironment();
+	update3DEnvironmentUI();
+}
+
+function set3DEnvironmentWeather(value) {
+	state.world3dEnvironment.weather = WORLD3D_WEATHER_OPTIONS.includes(value) ? value : 'live';
+	persist3DEnvironment();
+	update3DEnvironmentUI();
+}
+
+function set3DEnvironmentHud(visible) {
+	state.world3dEnvironment.hudVisible = !!visible;
+	persist3DEnvironment();
+	update3DEnvironmentUI();
+	state.world3D?.toggleCabDisplays?.(state.world3dEnvironment.hudVisible);
+	document.dispatchEvent(new CustomEvent('world3d-environment-changed'));
+}
+
+function load3DEnvironmentFromStorage() {
+	try {
+		const saved = JSON.parse(localStorage.getItem(WORLD3D_ENVIRONMENT_KEY) || 'null');
+		if (saved) {
+			state.world3dEnvironment = {
+				timeMode: saved.timeMode === 'custom' ? 'custom' : 'live',
+				customTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(saved.customTime || '') ? saved.customTime : '12:00',
+				weather: WORLD3D_WEATHER_OPTIONS.includes(saved.weather) ? saved.weather : 'live',
+				hudVisible: saved.hudVisible !== false
+			};
+		}
+	} catch {
+		state.world3dEnvironment = { timeMode: 'live', customTime: '12:00', weather: 'live', hudVisible: true };
+	}
+	update3DEnvironmentUI();
 }
 
 function setCoachType(value) {
@@ -286,6 +350,7 @@ function loadSettingsFromStorage() {
 	loadMapContainerSizeFromStorage();
 	loadStationSizeFromStorage();
 	loadGraphicsQualityFromStorage();
+	load3DEnvironmentFromStorage();
 	loadApiConnectionSettingsUI();
 }
 
@@ -299,6 +364,7 @@ function showSettingsDialog() {
 		applyMapContainerSizeToDOM();
 		updateStationSizeUI();
 		loadApiConnectionSettingsUI();
+		update3DEnvironmentUI();
 		dialog.style.display = 'block';
 		// Fade in animation
 		requestAnimationFrame(() => {
@@ -635,4 +701,4 @@ document.addEventListener('DOMContentLoaded', () => {
 	updateStationSizeUI();
 });
 
-export { loadSettingsFromStorage, showSettingsDialog, closeSettingsDialog, saveApiConnectionSettings, clearApiConnectionSettings, updateVehicleSize, resetVehicleSize, updateStationSize, setUnitSystem, updateUnitUI, setDefaultMaxSpeed, setDefaultAccelGForce, setDefaultDecelGForce, setMapContainerWidth, setMapContainerHeight, setCareerCurrency, clearCareerHighScores, setCareerFareRate, setCareerBaseCost, setCareerCoachCost, setCareerPassengerTraffic, setCareerAutoDoors, setCareerAutoCoaches, setCareerAutoStartCoaches, toggleCareerSettingsSection, refreshCareerSettingsVisibility, setPerformanceMode, set3DGraphicsQuality, setCoachType };
+export { loadSettingsFromStorage, showSettingsDialog, closeSettingsDialog, saveApiConnectionSettings, clearApiConnectionSettings, updateVehicleSize, resetVehicleSize, updateStationSize, setUnitSystem, updateUnitUI, setDefaultMaxSpeed, setDefaultAccelGForce, setDefaultDecelGForce, setMapContainerWidth, setMapContainerHeight, setCareerCurrency, clearCareerHighScores, setCareerFareRate, setCareerBaseCost, setCareerCoachCost, setCareerPassengerTraffic, setCareerAutoDoors, setCareerAutoCoaches, setCareerAutoStartCoaches, toggleCareerSettingsSection, refreshCareerSettingsVisibility, setPerformanceMode, set3DGraphicsQuality, setCoachType, set3DEnvironmentTimeMode, set3DEnvironmentTime, set3DEnvironmentWeather, set3DEnvironmentHud };

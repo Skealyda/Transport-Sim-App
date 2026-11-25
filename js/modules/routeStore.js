@@ -73,18 +73,95 @@ function round6(v) {
 	return Math.round(v * 1e6) / 1e6;
 }
 
-function normalizeRoute(route) {
-	if (!route || !Array.isArray(route.points) || !route.points.length) return null;
+function routePointCoordinates(point) {
+	const source = point?.latlng ?? point?.coordinates ?? point;
+	if (Array.isArray(source)) {
+		const lat = Number(source[0]);
+		const lng = Number(source[1]);
+		return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
+	}
+	const lat = Number(source?.lat ?? source?.latitude);
+	const lng = Number(source?.lng ?? source?.longitude ?? source?.lon);
+	return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null;
+}
+
+function distanceBetweenPoints(from, to) {
+	const radians = Math.PI / 180;
+	const latitude = (to[0] - from[0]) * radians;
+	const longitude = (to[1] - from[1]) * radians;
+	const a = Math.sin(latitude / 2) ** 2
+		+ Math.cos(from[0] * radians) * Math.cos(to[0] * radians) * Math.sin(longitude / 2) ** 2;
+	return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function normalizeRoute(route) {
+	if (!route) return null;
+	let rawPoints = Array.isArray(route.points) ? route.points : null;
+	let isGeoJsonLine = false;
+	if (!rawPoints && route.type === 'Feature' && route.geometry?.type === 'LineString') {
+		rawPoints = route.geometry.coordinates;
+		isGeoJsonLine = true;
+	}
+	if (!Array.isArray(rawPoints) || !rawPoints.length) return null;
 	const points = [];
-	for (const p of route.points) {
-		const ll = Array.isArray(p?.latlng) ? p.latlng : (p?.latlng && [p.latlng.lat, p.latlng.lng]);
+	let previous = null;
+	let distance = 0;
+	for (const p of rawPoints) {
+		const coordinates = routePointCoordinates(p);
+		const ll = isGeoJsonLine && coordinates ? [coordinates[1], coordinates[0]] : coordinates;
 		if (!ll || ll.length !== 2 || !ll.every(Number.isFinite)) return null;
-		const point = { latlng: [round6(ll[0]), round6(ll[1])], placeName: p.placeName || 'Unknown' };
-		if (p.type) point.type = p.type;
-		if (p.placeType) point.placeType = p.placeType;
+		if (Math.abs(ll[0]) > 90 || Math.abs(ll[1]) > 180) return null;
+		const point = { latlng: [round6(ll[0]), round6(ll[1])], placeName: p?.placeName || p?.name || 'Unknown' };
+		if (p?.type) point.type = p.type;
+		if (p?.placeType) point.placeType = p.placeType;
+		if (previous) distance += distanceBetweenPoints(previous, point.latlng);
+		previous = point.latlng;
 		points.push(point);
 	}
-	return { points, total_distance: route.total_distance ?? null, updated_at: Number(route.updated_at) || 0 };
+	const storedDistance = Number(route.total_distance ?? route.totalDistance ?? route.distance);
+	return {
+		points,
+		total_distance: Number.isFinite(storedDistance) && storedDistance > 0 ? storedDistance : round6(distance),
+		updated_at: Number(route.updated_at) || 0
+	};
+}
+
+export function parseRoutesDocument(payload) {
+	const entries = [];
+	let invalid = 0;
+	const visit = (candidate, fallbackName = '') => {
+		if (!candidate || typeof candidate !== 'object') {
+			invalid++;
+			return;
+		}
+		const raw = candidate.routes ?? candidate.route;
+		if (raw !== undefined && !candidate.points && candidate.type !== 'Feature') {
+			visit(raw, candidate.route_name || candidate.name || fallbackName);
+			return;
+		}
+		if (candidate.type === 'FeatureCollection' && Array.isArray(candidate.features)) {
+			for (const feature of candidate.features) visit(feature, feature?.properties?.name || '');
+			return;
+		}
+		if (Array.isArray(candidate)) {
+			for (let index = 0; index < candidate.length; index++) {
+				const item = candidate[index];
+				visit(item, String(item?.route_name || item?.name || `Imported route ${index + 1}`));
+			}
+			return;
+		}
+		const route = normalizeRoute(candidate);
+		if (route) {
+			const name = String(candidate.route_name || candidate.name || candidate.properties?.name || fallbackName || '').trim();
+			if (name) entries.push([name, route]);
+			else invalid++;
+			return;
+		}
+		for (const [name, value] of Object.entries(candidate)) visit(value, name);
+	};
+	visit(payload);
+	if (!entries.length) throw new Error('No valid routes were found. Use a routes.json export or a route with a points array.');
+	return { routes: Object.fromEntries(entries), invalid };
 }
 
 function sameRoute(a, b) {
@@ -186,7 +263,7 @@ function mergeFileIntoMirror(file) {
 /** Pick (or re-authorise) the Downloads/routes folder. Must run from a user gesture. */
 export async function connectRoutesFolder() {
 	if (!supportsFolderAccess) {
-		exportRoutesFile();
+		importRoutesFile();
 		return;
 	}
 	try {
@@ -236,6 +313,11 @@ export function syncRoutes() {
 	return syncPromise;
 }
 
+function announceRouteChange(reason) {
+	window.dispatchEvent(new CustomEvent('routes:changed', { detail: { reason } }));
+	renderStatus();
+}
+
 export function initRouteStore() {
 	initPromise = restoreFolder().finally(() => { initPromise = null; });
 	renderStatus();
@@ -257,7 +339,7 @@ export async function saveRoute(routeData) {
 	await writeFolderFile();
 	removeFrom(mirror.dirty, name);
 	saveMirror();
-	renderStatus();
+	announceRouteChange('save');
 	return { ok: true, server: false };
 }
 
@@ -269,7 +351,7 @@ export async function deleteRoute(name) {
 	await writeFolderFile();
 	removeFrom(mirror.pendingDeletes, name);
 	saveMirror();
-	renderStatus();
+	announceRouteChange('delete');
 	return { ok: true, server: false };
 }
 
@@ -306,25 +388,51 @@ export function exportRoutesFile() {
 }
 
 export function importRoutesFile() {
-	const input = Object.assign(document.createElement('input'), { type: 'file', accept: '.json,application/json' });
+	const input = Object.assign(document.createElement('input'), {
+		type: 'file',
+		accept: '.json,application/json,application/geo+json',
+		multiple: true,
+		hidden: true
+	});
+	document.body.appendChild(input);
 	input.onchange = async () => {
-		const file = input.files?.[0];
-		if (!file) return;
+		const files = [...(input.files || [])];
+		if (!files.length) { input.remove(); return; }
 		try {
-			const routes = JSON.parse(await file.text());
 			let count = 0;
-			for (const [name, raw] of Object.entries(routes || {})) {
-				const route = normalizeRoute(raw);
-				if (!route || (mirror.routes[name] && sameRoute(route, mirror.routes[name]))) continue;
-				mirror.routes[name] = { ...route, updated_at: Date.now() };
-				addTo(mirror.dirty, name);
-				count++;
+			let invalid = 0;
+			const errors = [];
+			for (const file of files) {
+				try {
+					const payload = JSON.parse(await file.text());
+					const parsed = parseRoutesDocument(payload);
+					invalid += parsed.invalid;
+					for (const [name, raw] of Object.entries(parsed.routes)) {
+						const route = normalizeRoute(raw);
+						if (!route || (mirror.routes[name] && sameRoute(route, mirror.routes[name]))) continue;
+						mirror.routes[name] = { ...route, updated_at: Date.now() };
+						addTo(mirror.dirty, name);
+						removeFrom(mirror.pendingDeletes, name);
+						count++;
+					}
+				} catch (error) {
+					errors.push(`${file.name}: ${error.message}`);
+				}
 			}
 			saveMirror();
-			await syncRoutes();
-			alert(count ? `✅ Imported ${count} route${count === 1 ? '' : 's'}.` : 'No new or changed routes in that file.');
+			await writeFolderFile();
+			mirror.dirty = [];
+			saveMirror();
+			announceRouteChange('import');
+			const result = count ? `Imported ${count} route${count === 1 ? '' : 's'}.` : 'No new or changed routes were found.';
+			const skipped = invalid ? ` Skipped ${invalid} invalid route${invalid === 1 ? '' : 's'}.` : '';
+			const failed = errors.length ? `\n\n${errors.join('\n')}` : '';
+			alert(`${result}${skipped}${failed}`);
 		} catch (e) {
-			alert(`❌ Could not import routes: ${e.message}`);
+			alert(`Could not import routes: ${e.message}`);
+		} finally {
+			input.value = '';
+			input.remove();
 		}
 	};
 	input.click();
@@ -350,11 +458,13 @@ function renderStatus() {
 		folderBtn.textContent = folderState === 'needs-permission' ? 'Reconnect folder'
 			: folderState === 'connected' ? 'Change folder' : 'Choose Downloads/routes';
 	}
+	const refreshBtn = document.getElementById('routeRefreshBtn');
+	if (refreshBtn) refreshBtn.style.display = supportsFolderAccess ? '' : 'none';
 	const hint = document.getElementById('routeStorageHint');
 	if (hint) {
 		hint.textContent = supportsFolderAccess
 			? 'Pick your Downloads folder once; routes are kept in this browser and mirrored to Downloads/routes/routes.json.'
-			: 'Routes are kept in this browser. Use Download to save a routes.json backup to your device.';
+			: 'Android browsers keep routes inside the app. Use Import JSON to bring in route files and Download for a backup; folder permission does not grant browser storage access.';
 	}
 }
 

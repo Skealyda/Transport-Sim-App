@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { solarDirection, solarElevation, tunnelLightingBand } from '../js/modules/three-d/worldView.js';
+import { resolveEnvironmentDate, resolveEnvironmentWeather, solarDirection, solarElevation, tunnelLightingBand } from '../js/modules/three-d/worldView.js';
 
 it('uses UTC and route longitude for daytime and nighttime', () => {
 	const middayIndia = new Date('2025-03-20T06:30:00Z');
@@ -20,4 +20,16 @@ it('keeps station surfaces bright and tunnel light pools fixed along the track',
 	expect(tunnelLightingBand(16, stations)).toBe(0);
 	expect(tunnelLightingBand(-8, stations)).toBe(1);
 	expect(tunnelLightingBand(32, stations)).toBe(tunnelLightingBand(0, stations));
+});
+
+it('applies a route-local manual 3D time and explicit weather override', () => {
+	const date = resolveEnvironmentDate(
+		new Date('2025-03-20T03:00:00Z'),
+		78,
+		{ timeMode: 'custom', customTime: '12:00' }
+	);
+	expect(date.toISOString()).toBe('2025-03-20T06:48:00.000Z');
+	expect(solarElevation(date, 11, 78)).toBeGreaterThan(1);
+	expect(resolveEnvironmentWeather('Heavy Rain', { weather: 'clear' })).toBe('Clear');
+	expect(resolveEnvironmentWeather('Heavy Rain', { weather: 'live' })).toBe('Heavy Rain');
 });

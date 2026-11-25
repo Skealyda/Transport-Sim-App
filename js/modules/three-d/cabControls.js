@@ -204,6 +204,7 @@ function safeAction(actions, name, argument) {
 }
 
 export function createCabControls(THREE, camera, canvas, state, actions) {
+	const touchLayout = !!state.isMobileDevice || globalThis.matchMedia?.('(max-width: 768px)').matches;
 	const root = new THREE.Group();
 	root.name = 'locomotive-cab-desk';
 	camera.add(root);
@@ -553,6 +554,7 @@ export function createCabControls(THREE, camera, canvas, state, actions) {
 			root.scale.x = Math.min(1, Math.max(0.3, finiteNumber(aspect, 1) * 0.52));
 		},
 		pointerDown(event) {
+			if (touchLayout) return false;
 			const action = actionAt(event);
 			if (!CONTROL_ACTIONS.includes(action)) return false;
 			if (action === 'limit' || action === 'power' || action === 'brake') {
@@ -582,7 +584,7 @@ export function createCabControls(THREE, camera, canvas, state, actions) {
 			return true;
 		},
 		update(timestamp, visible) {
-			root.visible = visible;
+			root.visible = visible && !touchLayout;
 			if (!visible) return;
 			const now = finiteNumber(timestamp);
 			if (now - lastTelemetryAt >= TELEMETRY_INTERVAL) {

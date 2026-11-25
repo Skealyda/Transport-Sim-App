@@ -37,6 +37,23 @@ export function solarElevation(date, lat, lng) {
 	return Math.asin(Math.max(-1, Math.min(1, solarDirection(date, lat, lng).up)));
 }
 
+export function resolveEnvironmentDate(date, longitude, setting = {}) {
+	if (setting.timeMode !== 'custom') return new Date(date);
+	const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(setting.customTime || '');
+	if (!match) return new Date(date);
+	const result = new Date(date);
+	const solarMinutes = Number(match[1]) * 60 + Number(match[2]) - longitude / 15 * 60;
+	const utcDay = Date.UTC(result.getUTCFullYear(), result.getUTCMonth(), result.getUTCDate());
+	return new Date(utcDay + solarMinutes * 60000);
+}
+
+export function resolveEnvironmentWeather(automaticCondition, setting = {}) {
+	const labels = { clear: 'Clear', cloudy: 'Cloudy', rain: 'Rain', snow: 'Snow', fog: 'Fog' };
+	return setting.weather && setting.weather !== 'live'
+		? labels[setting.weather] || setting.weather
+		: automaticCondition;
+}
+
 export function tunnelLightingBand(distance, stations) {
 	if (stations.some(station => Math.abs(station.distance - distance) <= 100)) return 3;
 	const phase = ((distance % 32) + 32) % 32;
@@ -195,6 +212,7 @@ export function createWorldView(THREE, container, state, onError, cabActions) {
 	let cell = null;
 	let mode = 'chase';
 	let zoom = 1;
+	let cabFov = 57;
 	let raf = 0;
 	let disposed = false;
 	let trainKey = '';
@@ -848,13 +866,15 @@ export function createWorldView(THREE, container, state, onError, cabActions) {
 			if (timestamp - environmentTime > 5000 || !environmentTime) {
 				environmentTime = timestamp;
 				const weather = state.weatherCardState?.currentWeatherData;
-				const condition = weather && !weather.unavailable ? weather.condition : null;
+				const automaticCondition = weather && !weather.unavailable ? weather.condition : null;
+				const condition = resolveEnvironmentWeather(automaticCondition, state.world3dEnvironment);
 				if (condition !== weatherKey) {
 					weatherKey = condition;
 					showWorldNotice('world3dWeather', condition ? `Weather: ${condition}` : 'Weather unavailable');
 				}
 			}
-			const solar = solarDirection(new Date(), pose.lat, pose.lng);
+			const environmentDate = resolveEnvironmentDate(new Date(), pose.lng, state.world3dEnvironment);
+			const solar = solarDirection(environmentDate, pose.lat, pose.lng);
 			const elevation = Math.asin(Math.max(-1, Math.min(1, solar.up)));
 			const daylight = Math.max(0, Math.min(1, (elevation + 0.08) / 0.35));
 			sun.castShadow = shadows && !underground && daylight > 0;
@@ -883,9 +903,32 @@ export function createWorldView(THREE, container, state, onError, cabActions) {
 			precipitation.material.size = /snow/i.test(weatherKey || '') ? 0.45 : 0.18;
 			precipitation.position.set(vehicle.x, vehicle.y - (timestamp * 0.012 % 20), vehicle.z);
 			if (mode === 'cab') {
+				camera.fov = cabFov;
+				camera.updateProjectionMatrix();
 				camera.position.copy(vehicle).add(new THREE.Vector3(0, 3.7, -7).applyQuaternion(vehicleTransform.quaternion));
 				camera.lookAt(transformAt(distance + 60, 3.3).position);
+			} else if (mode === 'front') {
+				camera.fov = 57;
+				camera.updateProjectionMatrix();
+				const front = transformAt(distance + 45 / zoom, 0).position;
+				camera.position.copy(front);
+				camera.position.y += 7 * zoom;
+				camera.lookAt(vehicle.clone().add(new THREE.Vector3(0, 2, 0)));
+			} else if (mode === 'side') {
+				camera.fov = 57;
+				camera.updateProjectionMatrix();
+				const side = new THREE.Vector3(Math.cos(heading), 0, Math.sin(heading));
+				camera.position.copy(vehicle).addScaledVector(side, 28 * zoom);
+				camera.position.y += 8 * zoom;
+				camera.lookAt(vehicle.clone().add(new THREE.Vector3(0, 2, 0)));
+			} else if (mode === 'roof') {
+				camera.fov = 62;
+				camera.updateProjectionMatrix();
+				camera.position.copy(vehicle).add(new THREE.Vector3(0, 16 * zoom, 0));
+				camera.lookAt(transformAt(distance + 35, 2).position);
 			} else {
+				camera.fov = 57;
+				camera.updateProjectionMatrix();
 				const trainLength = train.children.length > 1 ? 35 + (train.children.length - 2) * 23 : 12;
 				const back = Math.max(32 * zoom, trainLength + 22);
 				const rearDistance = distance - back;
@@ -999,13 +1042,22 @@ export function createWorldView(THREE, container, state, onError, cabActions) {
 			applyGraphicsQuality(quality);
 			resize();
 		},
-		zoom(inward) { zoom = Math.max(0.6, Math.min(3, zoom * (inward ? 0.8 : 1.25))); },
+		zoom(inward) {
+			if (mode === 'cab') {
+				cabFov = Math.max(36, Math.min(68, cabFov + (inward ? -6 : 6)));
+				camera.fov = cabFov;
+				camera.updateProjectionMatrix();
+				return;
+			}
+			zoom = Math.max(0.6, Math.min(3, zoom * (inward ? 0.8 : 1.25)));
+		},
 		cabWheel(event) { return mode === 'cab' && state.manualControlState?.isManualMode && cabControls.wheel(event); },
 		toggleWipers() { return cabControls.toggleWipers(); },
 		toggleCabDisplays(visible) { return cabControls.toggleDisplays(visible); },
 		getStats() { return { frames: frameCount, distance: world?.distanceAt(state.index, state.progress), stationCount: world?.stations.length, portalCount: world?.portals.length,
 			underground: world?.isTunnelAt(world.distanceAt(state.index, state.progress)), weather: weatherKey || null, groundOpenings: groundOpeningCount,
 			trackHeight: world?.heightAt(world.distanceAt(state.index, state.progress)), cameraHeight: camera.position.y,
+			cameraFov: camera.fov,
 			targetFPS: state.performanceModeEnabled ? Math.min(state.targetFPS || 60, 30) : state.targetFPS || 60,
 			pixelRatio: renderer.getPixelRatio(),
 			wipers: cabControls.getWipers(),

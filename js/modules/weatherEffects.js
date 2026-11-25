@@ -57,7 +57,7 @@ export function applyWeatherSettings() {
     }
 
     // Update weather state
-    weatherState.isRaining = rainToggle.checked;
+    state.weatherState.isRaining = rainToggle.checked;
     state.weatherState.isSnowing = snowToggle.checked;
     state.weatherState.isDayMode = dayNightMode.value === 'day';
     state.weatherState.rainIntensity = parseInt(rainIntensity.value);
@@ -110,7 +110,7 @@ export function resetWeather() {
     }
 
     // Reset weather state
-    weatherState = {
+    state.weatherState = {
         isRaining: false,
         isSnowing: false,
         isDayMode: true,

@@ -1735,4 +1735,30 @@ export { populateRouteDropdown, getCoordinateDisplay, convertToArrayFormat, crea
 export { showHelpBulb, hideHelpBulb, toggleWaypointInstructions, showWaypointInstructions, hideWaypointInstructions };
 export { calculateMaxAchievableSpeed, calculateTotalRemainingDistance };
 export { fetchRoadRoute };
+
+if (typeof window !== 'undefined') {
+	window.addEventListener('routes:changed', async () => {
+		const loadDialog = document.getElementById('routeDialog');
+		const editDialog = document.getElementById('editRouteDialog');
+		if (loadDialog?.style.display !== 'block' && editDialog?.style.display !== 'block') return;
+		try {
+			const routes = await fetchRouteMetadata();
+			const selectedEditRoute = document.getElementById('editRouteDropdown')?.value;
+			if (loadDialog?.style.display === 'block') {
+				window.mainDialogRouteData = routes;
+				populateMainRouteDropdown(routes);
+			}
+			if (editDialog?.style.display === 'block') {
+				window.editDialogRouteData = routes;
+				populateRouteDropdown(routes);
+				if (selectedEditRoute && [...document.getElementById('editRouteDropdown').options].some(option => option.value === selectedEditRoute)) {
+					document.getElementById('editRouteDropdown').value = selectedEditRoute;
+					await loadRouteForEditing();
+				}
+			}
+		} catch (error) {
+			console.warn('Could not refresh route dialogs:', error);
+		}
+	});
+}
 export { isRouteLoop };

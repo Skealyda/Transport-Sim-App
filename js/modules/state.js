@@ -129,6 +129,12 @@ const state = {
         snowFlakes: [],
         maxParticles: 50 // Performance limit
     },
+    world3dEnvironment: {
+        timeMode: 'live',
+        customTime: '12:00',
+        weather: 'live',
+        hudVisible: true
+    },
 
     // ====================================
     // WEATHER CARD STATE
